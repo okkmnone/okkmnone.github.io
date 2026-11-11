@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Notes — a quiet blog</title>
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+        <style>
+            :root {
+                --ink: #1f2328;
+            }
+            body {
+                font-family: ui-serif, Georgia, "Times New Roman", serif;
+            }
+            .mono {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            }
+            .row {
+                transition:
+                    background 0.25s ease,
+                    transform 0.25s ease;
+            }
+            .row:hover {
+                background: #fff;
+                transform: translateX(4px);
+            }
+            .fade {
+                animation: fade 0.45s ease both;
+            }
+            @keyframes fade {
+                from {
+                    opacity: 0;
+                    transform: translateY(6px);
+                }
+                to {
+                    opacity: 1;
+                    transform: none;
+                }
+            }
+        </style>
+    </head>
+    <body class="bg-[#faf9f6] text-[#1f2328] antialiased">
+        <div class="max-w-3xl mx-auto px-6">
+            <header class="pt-20 pb-10 border-b border-neutral-200">
+                <p
+                    class="mono text-[11px] tracking-[0.25em] uppercase text-neutral-400"
+                >
+                    a blog · ongoing
+                </p>
+                <h1 class="mt-4 text-4xl sm:text-5xl tracking-tight">Notes</h1>
+                <blockquote
+                    id="motto"
+                    class="mt-4 text-neutral-400 text-[14px] leading-relaxed italic max-w-md"
+                ></blockquote>
+            </header>
+
+            <main class="py-8">
+                <ol id="list" class="divide-y divide-neutral-100"></ol>
+
+                <nav class="mt-10 relative border-t border-neutral-200 pt-6">
+                    <span
+                        id="count"
+                        class="mono text-[10px] uppercase tracking-widest text-neutral-400 absolute right-0 -top-1.5 px-3 bg-[#faf9f6] whitespace-nowrap"
+                    ></span>
+                    <div class="flex items-center justify-between gap-4">
+                        <button
+                            id="prev"
+                            class="mono text-xs tracking-wider uppercase px-4 py-2 rounded-full border border-neutral-300 text-neutral-600 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                            ← Newer
+                        </button>
+                        <div id="dots" class="flex gap-2"></div>
+                        <button
+                            id="next"
+                            class="mono text-xs tracking-wider uppercase px-4 py-2 rounded-full border border-neutral-300 text-neutral-600 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                            Older →
+                        </button>
+                    </div>
+                </nav>
+            </main>
+
+            <footer
+                class="py-14 mono text-[11px] tracking-widest uppercase text-neutral-400"
+            >
+                <span>© <span id="yr"></span></span>
+            </footer>
+        </div>
+
+        <script src="data.js"></script>
+        <script>
+            const PER = 10;
+            /* zero-padded numbers, so lexical order == numeric order */
+            const items = [...DATA].sort().reverse();
+            const pages = Math.ceil(items.length / PER);
+            let page = 0;
+
+            const list = document.getElementById("list");
+            const dots = document.getElementById("dots");
+
+            const meta = (f) => {
+                const [, d, slug, ...modelParts] = f
+                    .replace(/\.html?$/, "")
+                    .split("--");
+                const title = slug
+                    .split("-")
+                    .map((w, i) =>
+                        i > 0 &&
+                        [
+                            "a",
+                            "an",
+                            "the",
+                            "and",
+                            "or",
+                            "but",
+                            "nor",
+                            "so",
+                            "yet",
+                            "at",
+                            "by",
+                            "for",
+                            "in",
+                            "of",
+                            "on",
+                            "to",
+                            "up",
+                            "as",
+                        ].includes(w)
+                            ? w
+                            : w.charAt(0).toUpperCase() + w.slice(1),
+                    )
+                    .join(" ");
+                /* date is the second field */
+                const [mo, day, yr] = d.split("-");
+                const date = `${mo.charAt(0).toUpperCase()}${mo.slice(1)} ${day}, ${yr}`;
+                /* optional model field; its final `-` word is the effort
+                   when recognizable (low/medium/high/max) */
+                let tag = "";
+                if (modelParts.length) {
+                    /* effort is always its own field, optional */
+                    const EFFORTS = new Set(["low", "medium", "high", "max"]);
+                    let effort = null;
+                    if (EFFORTS.has(modelParts[modelParts.length - 1])) {
+                        effort = modelParts.pop();
+                    }
+                    const model = modelParts.join(" ");
+                    tag = effort ? `${model} · ${effort}` : model;
+                }
+                return { tag, title, date };
+            };
+
+            function render() {
+                const slice = items.slice(page * PER, page * PER + PER);
+                list.innerHTML = slice
+                    .map((f, i) => {
+                        const m = meta(f);
+                        return `<li class="fade" style="animation-delay:${i * 35}ms">
+      <a href="pages/${f}" target="_blank" class="row flex items-baseline gap-4 px-4 py-4 rounded-lg group">
+        <span class="mono text-[11px] text-neutral-400 w-24 shrink-0 whitespace-nowrap">${m.date}</span>
+        <span class="flex-1 text-[17px] leading-snug group-hover:underline decoration-neutral-300 underline-offset-4">${m.title}</span>${
+            m.tag
+                ? `<span class="mono text-[10px] uppercase tracking-wider text-neutral-400 hidden sm:block">${m.tag}</span>`
+                : ""
+        }
+      </a></li>`;
+                    })
+                    .join("");
+
+                dots.innerHTML = Array.from(
+                    { length: pages },
+                    (_, i) =>
+                        `<button data-p="${i}" class="w-7 h-7 rounded-full mono text-[11px] ${i === page ? "bg-[#1f2328] text-white" : "text-neutral-400 hover:bg-neutral-200"}">${i + 1}</button>`,
+                ).join("");
+
+                document.getElementById("prev").disabled = page === 0;
+                document.getElementById("next").disabled = page === pages - 1;
+                document.getElementById("count").textContent =
+                    `${items.length} entries`;
+                /* epigraph: re-rolled on every load and page turn */
+                document.getElementById("motto").textContent =
+                    EPIGRAPHS[Math.floor(Math.random() * EPIGRAPHS.length)];
+                /* after a turn, put the first row at the very top
+                   (scrolling the list, not the whole page — no reload
+                   feel); measured after the epigraph settles */
+                window.scrollTo({
+                    top: list.offsetTop,
+                    behavior: "smooth",
+                });
+            }
+
+            dots.addEventListener("click", (e) => {
+                const b = e.target.closest("button");
+                if (b) {
+                    page = +b.dataset.p;
+                    render();
+                }
+            });
+            document.getElementById("prev").onclick = () => {
+                if (page > 0) {
+                    page--;
+                    render();
+                }
+            };
+            document.getElementById("next").onclick = () => {
+                if (page < pages - 1) {
+                    page++;
+                    render();
+                }
+            };
+            document.getElementById("yr").textContent =
+                new Date().getFullYear();
+            render();
+        </script>
+    </body>
+</html>

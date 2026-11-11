@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Why is my Bevy "Hello World" 4 GB? — A tale of source vs. binary distribution</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style>
+  :root {
+    --ink: #0f172a;
+    --paper: #fbf7ee;
+    --accent: #d94f2b;
+    --accent2: #2b6cd9;
+    --muted: #6b6357;
+  }
+  html, body { background: var(--paper); color: var(--ink); }
+  body {
+    font-family: ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(217,79,43,0.06), transparent 40%),
+      radial-gradient(circle at 90% 30%, rgba(43,108,217,0.06), transparent 40%);
+  }
+  .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+  .display { font-family: "Fraunces", "Playfair Display", ui-serif, Georgia, serif; letter-spacing: -0.02em; }
+  .rule { background-image: linear-gradient(to right, var(--ink) 50%, transparent 50%); background-size: 8px 1px; background-repeat: repeat-x; background-position: 0 50%; height: 1px; }
+  .tag {
+    display: inline-block; padding: 2px 8px; border: 1px solid var(--ink); border-radius: 999px;
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .card {
+    background: #fffdf7;
+    border: 1px solid #1f2937;
+    box-shadow: 6px 6px 0 #0f172a;
+  }
+  .code {
+    background: #0f172a; color: #e2e8f0; border-radius: 6px; padding: 14px 16px;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 13px; line-height: 1.55; overflow-x: auto;
+  }
+  .code .k { color: #f59e0b; }
+  .code .s { color: #86efac; }
+  .code .c { color: #64748b; font-style: italic; }
+  .code .n { color: #93c5fd; }
+  .drop::first-letter {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+    float: left; font-size: 68px; line-height: 0.85; padding: 6px 10px 0 0; font-weight: 700;
+    color: var(--accent);
+  }
+  .bar { height: 22px; border: 1px solid #0f172a; position: relative; overflow: hidden; }
+  .bar > span {
+    display:block; height:100%;
+    background: repeating-linear-gradient(45deg, #0f172a, #0f172a 4px, #1e293b 4px, #1e293b 8px);
+  }
+  .bar.accent > span {
+    background: repeating-linear-gradient(45deg, #d94f2b, #d94f2b 4px, #b7431f 4px, #b7431f 8px);
+  }
+  .bar.blue > span {
+    background: repeating-linear-gradient(45deg, #2b6cd9, #2b6cd9 4px, #1e50a7 4px, #1e50a7 8px);
+  }
+  .bar.green > span {
+    background: repeating-linear-gradient(45deg, #059669, #059669 4px, #047857 4px, #047857 8px);
+  }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  .arrow { transition: transform .2s ease; display:inline-block; }
+  details[open] .arrow { transform: rotate(90deg); }
+  .grid-lines {
+    background-image:
+      linear-gradient(to right, rgba(15,23,42,0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(15,23,42,0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .stamp {
+    display:inline-block; padding: 6px 12px; border: 2px solid var(--accent);
+    color: var(--accent); font-weight: 800; letter-spacing: 0.15em; font-size: 12px;
+    transform: rotate(-4deg); font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .toc a { color: var(--ink); text-decoration: none; border-bottom: 1px dashed #94a3b8; }
+  .toc a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+</style>
+</head>
+<body class="antialiased">
+
+<!-- Masthead -->
+<header class="max-w-6xl mx-auto px-6 pt-10">
+  <div class="flex items-center justify-between text-xs uppercase tracking-widest text-slate-600">
+    <span>Vol. I &middot; No. 3</span>
+    <span>The Build Artifact Gazette</span>
+    <span>Est. 2026 &middot; Free of charge</span>
+  </div>
+  <div class="rule my-3"></div>
+  <div class="rule mb-6" style="height:2px;background:linear-gradient(to right,#0f172a,#0f172a);"></div>
+
+  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+    <div class="md:w-3/4">
+      <span class="tag">Field report &middot; Build systems</span>
+      <h1 class="display text-5xl md:text-7xl font-black leading-[0.95] mt-4">
+        Why your <span style="color:var(--accent)">Bevy&nbsp;“Hello&nbsp;World”</span>
+        weighs&nbsp;<span class="underline decoration-wavy decoration-orange-500 underline-offset-4">4&nbsp;gigabytes</span>
+        &mdash; and C++ is barely any better.
+      </h1>
+      <p class="mt-5 text-lg text-slate-700 max-w-3xl">
+        A short essay on <em>source distribution</em>, <em>binary distribution</em>, the debug
+        information no one asked for, and the reason PyTorch quietly consumes half your SSD.
+      </p>
+    </div>
+    <div class="text-right shrink-0">
+      <div class="stamp">Disk&nbsp;Full</div>
+      <p class="mono text-xs mt-3 text-slate-600">by an engineer who ran<br/><span class="mono">du&nbsp;-sh&nbsp;target/</span> once too often</p>
+    </div>
+  </div>
+  <div class="rule mt-8"></div>
+</header>
+
+<!-- The scene of the crime -->
+<section class="max-w-6xl mx-auto px-6 mt-10 grid md:grid-cols-3 gap-8">
+  <aside class="md:col-span-1">
+    <div class="card p-5">
+      <p class="text-xs uppercase tracking-widest text-slate-600">The scene of the crime</p>
+      <h2 class="display text-2xl font-bold mt-2">A brand-new project</h2>
+      <div class="code mt-4">
+<span class="c"># You did nothing wrong.</span>
+<span class="k">$</span> cargo new hello --bin
+<span class="k">$</span> cd hello
+<span class="k">$</span> cargo add bevy
+<span class="k">$</span> cargo run
+<span class="c"># ... 400+ crates compile ...</span>
+<span class="c"># ... coffee ...</span>
+<span class="c"># ... more coffee ...</span>
+
+<span class="k">$</span> du -sh target/
+<span class="n">4.2G</span>   target/
+      </div>
+      <p class="text-sm text-slate-700 mt-4">
+        Four gigabytes. For a window that says <span class="mono">Hello, world</span>.
+        Your <span class="mono">src/main.rs</span> is <strong>seven lines long</strong>.
+      </p>
+    </div>
+
+    <nav class="toc mt-6 text-sm leading-relaxed">
+      <p class="text-xs uppercase tracking-widest text-slate-600 mb-2">In this issue</p>
+      <ol class="list-decimal list-inside space-y-1">
+        <li><a href="#anatomy">Anatomy of a 4&nbsp;GB target/</a></li>
+        <li><a href="#cpp">The C++ counter-example</a></li>
+        <li><a href="#binary">Why binary distribution feels magic</a></li>
+        <li><a href="#dark">…and its dark side</a></li>
+        <li><a href="#python">Exhibit&nbsp;A: <span class="mono">pip install torch</span></a></li>
+        <li><a href="#verdict">A verdict, of sorts</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <article class="md:col-span-2">
+    <p class="drop text-lg leading-relaxed text-slate-800">
+      There is a rite of passage in modern Rust game development. You type
+      <span class="mono">cargo add bevy</span>, press enter, and watch as your laptop
+      transforms into a small space heater. Half an hour later, you own a
+      <span class="mono">target/</span> directory that is larger than the entire
+      Windows XP installation media &mdash; and all you have to show for it is a
+      spinning cube. It is tempting to blame Bevy, or Rust, or the compiler team.
+      The truth is more interesting: what you are looking at is <em>source
+      distribution taken to its logical conclusion</em>, and it is the price of a
+      genuinely reproducible, hackable, cross-platform build.
+    </p>
+
+    <p class="mt-4 text-slate-800 leading-relaxed">
+      To understand why, we need to open up that <span class="mono">target/</span>
+      folder and stop treating it as a black box. Almost none of those 4&nbsp;GB
+      are your program. Almost all of them are <em>things the compiler needed
+      once</em> and might need again.
+    </p>
+  </article>
+</section>
+
+<!-- Anatomy -->
+<section id="anatomy" class="max-w-6xl mx-auto px-6 mt-16">
+  <div class="rule mb-4"></div>
+  <div class="flex items-baseline justify-between flex-wrap gap-4">
+    <h2 class="display text-4xl font-black">1 &middot; Anatomy of a 4&nbsp;GB <span class="mono text-3xl">target/</span></h2>
+    <span class="tag">Rust &middot; Bevy 0.14-ish</span>
+  </div>
+  <p class="mt-3 text-slate-700 max-w-3xl">
+    Approximate breakdown of a fresh <span class="mono">cargo run</span> of a Bevy
+    "hello window", debug profile. Yours will vary; the shape will not.
+  </p>
+
+  <div class="grid md:grid-cols-2 gap-8 mt-8">
+    <div class="card p-6">
+      <table class="w-full text-sm">
+        <thead class="text-left text-xs uppercase tracking-widest text-slate-600">
+          <tr><th class="pb-2">What</th><th class="pb-2">Rough size</th><th class="pb-2">Share</th></tr>
+        </thead>
+        <tbody class="align-middle">
+          <tr>
+            <td class="py-2 pr-2">Debug info (<span class="mono">.rlib</span>, <span class="mono">.pdb</span>, DWARF)</td>
+            <td class="py-2 mono">~2.2 GB</td>
+            <td class="py-2 w-1/3"><div class="bar accent"><span style="width:55%"></span></div></td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-2">Incremental compilation cache</td>
+            <td class="py-2 mono">~800 MB</td>
+            <td class="py-2"><div class="bar blue"><span style="width:20%"></span></div></td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-2">400+ dependency <span class="mono">.rlib</span>s</td>
+            <td class="py-2 mono">~600 MB</td>
+            <td class="py-2"><div class="bar"><span style="width:15%"></span></div></td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-2">Proc-macro artifacts, build scripts</td>
+            <td class="py-2 mono">~200 MB</td>
+            <td class="py-2"><div class="bar green"><span style="width:5%"></span></div></td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-2">Actual <span class="mono">hello</span> executable</td>
+            <td class="py-2 mono">~90 MB</td>
+            <td class="py-2"><div class="bar"><span style="width:3%"></span></div></td>
+          </tr>
+          <tr class="border-t border-slate-300">
+            <td class="pt-3 font-bold">Your source code</td>
+            <td class="pt-3 mono">~180 bytes</td>
+            <td class="pt-3 text-xs text-slate-500">(a rounding error)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div>
+      <h3 class="display text-2xl font-bold">Where did it all go?</h3>
+      <p class="mt-2 text-slate-800 leading-relaxed">
+        Every one of those 400+ crates &mdash; <span class="mono">wgpu</span>,
+        <span class="mono">naga</span>, <span class="mono">winit</span>,
+        <span class="mono">glam</span>, <span class="mono">serde</span>,
+        <span class="mono">tracing</span>, and 395 friends &mdash; is compiled
+        <strong>from source</strong>, <strong>for your exact target triple</strong>,
+        with <strong>your exact feature flags</strong>, in <strong>debug mode</strong>,
+        with <strong>full debug symbols</strong>, and cached so that the next build
+        is fast.
+      </p>
+      <p class="mt-3 text-slate-800 leading-relaxed">
+        The compiler keeps: the object files, the metadata needed for cross-crate
+        inlining and generic instantiation (MIR), incremental fingerprints, and
+        multiple copies of essentially the same generic code
+        <em>monomorphized</em> for different types. Bevy is heavily generic. So is
+        <span class="mono">wgpu</span>. So is basically all idiomatic Rust. Every
+        <span class="mono">Query&lt;(&amp;Transform, &amp;Velocity)&gt;</span> in
+        your code is a new function in the binary.
+      </p>
+      <p class="mt-3 text-slate-800 leading-relaxed">
+        Strip the debug info and run <span class="mono">--release</span>, and the
+        <em>executable</em> falls to a few tens of megabytes. But
+        <span class="mono">target/</span> is not the executable. It is the
+        <em>workshop</em>.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- C++ counterexample -->
+<section id="cpp" class="max-w-6xl mx-auto px-6 mt-20">
+  <div class="rule mb-4"></div>
+  <h2 class="display text-4xl font-black">2 &middot; “But C++ doesn’t do this!” &mdash; well, actually…</h2>
+
+  <div class="grid md:grid-cols-5 gap-8 mt-6">
+    <div class="md:col-span-3">
+      <p class="text-slate-800 leading-relaxed">
+        The popular counter-argument is that a C++ project “of the same scale”
+        produces a tiny build directory. This is a comforting myth. If you
+        actually build a comparable C++ game &mdash; say, a minimal
+        <span class="mono">SDL2 + bgfx + glm + spdlog + fmt + entt</span> program
+        &mdash; <em>from source</em>, in <em>Debug</em>, with symbols, the numbers
+        line up depressingly well:
+      </p>
+
+      <div class="card p-5 mt-5">
+        <table class="w-full text-sm mono">
+          <thead class="text-xs uppercase tracking-widest text-slate-600">
+            <tr class="text-left"><th class="pb-2">Build</th><th class="pb-2 text-right">Intermediate size</th></tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-slate-200"><td class="py-2">Bevy hello (debug, from source)</td><td class="text-right">~4.2 GB</td></tr>
+            <tr class="border-t border-slate-200"><td class="py-2">Unreal C++ project (Debug)</td><td class="text-right">80–150 GB</td></tr>
+            <tr class="border-t border-slate-200"><td class="py-2">Chromium (Debug)</td><td class="text-right">100+ GB</td></tr>
+            <tr class="border-t border-slate-200"><td class="py-2">LLVM + Clang (Debug)</td><td class="text-right">30–60 GB</td></tr>
+            <tr class="border-t border-slate-200"><td class="py-2">Small SDL2+bgfx demo (Debug)</td><td class="text-right">1–3 GB</td></tr>
+            <tr class="border-t border-slate-200"><td class="py-2">Same demo, Release + stripped</td><td class="text-right">40–120 MB</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="text-slate-800 leading-relaxed mt-5">
+        The reason people <em>believe</em> C++ is lean is that they almost never
+        build its dependencies. They install them. Pre-built. From a package
+        manager, an SDK installer, a vendor-shipped
+        <span class="mono">.lib</span>, or the system <span class="mono">/usr/lib</span>.
+        This is <strong>binary distribution</strong>, and the C++ ecosystem has
+        depended on it for forty years, largely because <em>building C++ from
+        source at scale is famously miserable</em>: no standard build system, no
+        standard package manager, ABI landmines everywhere, and header-only
+        libraries that recompile the world every translation unit.
+      </p>
+    </div>
+
+    <aside class="md:col-span-2">
+      <div class="card p-5">
+        <p class="text-xs uppercase tracking-widest text-slate-600">Aside</p>
+        <h3 class="display text-xl font-bold mt-1">Header-only ≠ free</h3>
+        <p class="text-sm text-slate-700 mt-2">
+          A single innocent <span class="mono">#include &lt;boost/asio.hpp&gt;</span>
+          can pull in <strong>100,000+ lines</strong> of code
+          <em>per translation unit</em>. Multiply by files. Multiply by templates.
+          This is exactly the same monomorphization tax Rust pays &mdash; C++
+          just hides it behind ccache and pretends it isn’t there.
+        </p>
+      </div>
+
+      <div class="card p-5 mt-5">
+        <p class="text-xs uppercase tracking-widest text-slate-600">Rule of thumb</p>
+        <h3 class="display text-xl font-bold mt-1">If you compile it, you store it.</h3>
+        <p class="text-sm text-slate-700 mt-2">
+          Debug info is typically <strong>5–20×</strong> the size of the code it
+          describes. Templates/generics multiply that further. There is no
+          language that escapes this &mdash; only ecosystems that pre-pay the cost
+          for you and hand you the result.
+        </p>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- Source vs Binary -->
+<section id="binary" class="max-w-6xl mx-auto px-6 mt-20">
+  <div class="rule mb-4"></div>
+  <h2 class="display text-4xl font-black">3 &middot; Two philosophies, one disk</h2>
+
+  <div class="grid md:grid-cols-2 gap-8 mt-8">
+    <div class="card p-6 grid-lines">
+      <span class="tag" style="border-color:#2b6cd9;color:#2b6cd9;">Source distribution</span>
+      <h3 class="display text-2xl font-bold mt-3">“Here is the recipe. Bake it yourself.”</h3>
+      <p class="text-sm text-slate-700 mt-2">Rust/Cargo, Go modules, most of Nix, Gentoo Portage, Haskell/Cabal.</p>
+      <ul class="mt-4 space-y-2 text-sm text-slate-800">
+        <li><span class="text-emerald-700 font-bold">+</span> Reproducible &mdash; same source, same flags, same binary.</li>
+        <li><span class="text-emerald-700 font-bold">+</span> Cross-compile to anything you have a toolchain for.</li>
+        <li><span class="text-emerald-700 font-bold">+</span> LTO, PGO, custom target-cpu, feature flags all work.</li>
+        <li><span class="text-emerald-700 font-bold">+</span> Auditable. You can literally read every line that runs.</li>
+        <li><span class="text-rose-700 font-bold">−</span> First build is slow and enormous.</li>
+        <li><span class="text-rose-700 font-bold">−</span> <span class="mono">target/</span> grows without bound.</li>
+        <li><span class="text-rose-700 font-bold">−</span> CI needs disk, RAM, and patience.</li>
+      </ul>
+    </div>
+
+    <div class="card p-6 grid-lines">
+      <span class="tag" style="border-color:#d94f2b;color:#d94f2b;">Binary distribution</span>
+      <h3 class="display text-2xl font-bold mt-3">“Here is a cake. Please don’t ask.”</h3>
+      <p class="text-sm text-slate-700 mt-2">Python wheels, npm (native modules), Conan/vcpkg (binary mode), apt/dnf, Homebrew bottles, PyTorch, CUDA.</p>
+      <ul class="mt-4 space-y-2 text-sm text-slate-800">
+        <li><span class="text-emerald-700 font-bold">+</span> Install in seconds, not hours.</li>
+        <li><span class="text-emerald-700 font-bold">+</span> No toolchain required on the user’s machine.</li>
+        <li><span class="text-emerald-700 font-bold">+</span> Lets non-experts consume complex native code.</li>
+        <li><span class="text-rose-700 font-bold">−</span> One wheel per (OS × arch × Python × CUDA × ABI).</li>
+        <li><span class="text-rose-700 font-bold">−</span> Vendors bundle every <span class="mono">.so</span> they touched, “just in case.”</li>
+        <li><span class="text-rose-700 font-bold">−</span> The same 2&nbsp;GB of CUDA lives in 14 different venvs.</li>
+        <li><span class="text-rose-700 font-bold">−</span> You cannot patch, audit, or recompile with new flags.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="text-slate-800 leading-relaxed mt-8 max-w-4xl">
+    Notice how the trade-offs are almost mirror images. Source distribution
+    trades <em>disk and time</em> for <em>flexibility and correctness</em>. Binary
+    distribution trades <em>flexibility</em> for <em>speed at install time</em> &mdash; and
+    then, quietly, it trades your <em>disk</em> back anyway, in a different currency.
+  </p>
+</section>
+
+<!-- Dark side -->
+<section id="dark" class="max-w-6xl mx-auto px-6 mt-20">
+  <div class="rule mb-4"></div>
+  <h2 class="display text-4xl font-black">4 &middot; The hidden cost of “just download the binary”</h2>
+
+  <div class="grid md:grid-cols-3 gap-6 mt-8">
+    <div class="card p-5">
+      <p class="text-xs uppercase tracking-widest text-slate-600">Cost #1</p>
+      <h3 class="display text-xl font-bold mt-1">Combinatorial explosion</h3>
+      <p class="text-sm text-slate-700 mt-2">
+        A binary must exist for every OS, every CPU arch, every ABI, every
+        supported version of the language, and every version of every native
+        dependency it links against. PyTorch ships roughly
+        <span class="mono">~30</span> wheels <em>per release</em>. The project’s
+        release page is measured in gigabytes.
+      </p>
+    </div>
+    <div class="card p-5">
+      <p class="text-xs uppercase tracking-widest text-slate-600">Cost #2</p>
+      <h3 class="display text-xl font-bold mt-1">Bundle-everything syndrome</h3>
+      <p class="text-sm text-slate-700 mt-2">
+        Because the packager cannot assume anything about the user’s system,
+        they ship <em>their own</em> libc-adjacent shims, their own OpenSSL,
+        their own MKL, their own cuDNN, their own libjpeg. Every wheel is a
+        miniature Linux distribution in a trench coat.
+      </p>
+    </div>
+    <div class="card p-5">
+      <p class="text-xs uppercase tracking-widest text-slate-600">Cost #3</p>
+      <h3 class="display text-xl font-bold mt-1">Duplication by venv</h3>
+      <p class="text-sm text-slate-700 mt-2">
+        Each virtualenv, each Docker layer, each conda env re-downloads and
+        re-stores the same 2&nbsp;GB CUDA runtime. There is no system-wide
+        deduplication because there is no system-wide contract about which
+        version is “safe.”
+      </p>
+    </div>
+    <div class="card p-5">
+      <p class="text-xs uppercase tracking-widest text-slate-600">Cost #4</p>
+      <h3 class="display text-xl font-bold mt-1">Opaque supply chain</h3>
+      <p class="text-sm text-slate-700 mt-2">
+        A wheel is a zip file of pre-compiled <span class="mono">.so</span>s
+        someone else built on some CI machine somewhere. Reproducing it byte-for-byte
+        is often impossible. Auditing it is a job for a reverse engineer, not a
+        reviewer.
+      </p>
+    </div>
+    <div class="card p-5">
+      <p class="text-xs uppercase tracking-widest text-slate-600">Cost #5</p>
+      <h3 class="display text-xl font-bold mt-1">Version lock-in</h3>
+      <p class="text-sm text-slate-700 mt-2">
+        Because binaries carry an ABI, upgrading Python or glibc can invalidate
+        an entire dependency graph. This is why “just <span class="mono">pip
+        install</span>” periodically ends with a 40-message Stack Overflow
+        thread and a fresh conda environment.
+      </p>
+    </div>
+    <div class="card p-5">
+      <p class="text-xs uppercase tracking-widest text-slate-600">Cost #6</p>
+      <h3 class="display text-xl font-bold mt-1">The illusion of small</h3>
+      <p class="text-sm text-slate-700 mt-2">
+        Your project directory is 12&nbsp;KB. Your dependencies live somewhere
+        else, out of sight, and therefore out of your mental model of the
+        project. It <em>feels</em> lightweight. It is not. It is just tidied away.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- PyTorch exhibit -->
+<section id="python" class="max-w-6xl mx-auto px-6 mt-20">
+  <div class="rule mb-4"></div>
+  <h2 class="display text-4xl font-black">5 &middot; Exhibit A: <span class="mono text-3xl">pip install torch</span></h2>
+
+  <div class="grid md:grid-cols-5 gap-8 mt-6">
+    <div class="md:col-span-2">
+      <div class="code">
+<span class="k">$</span> pip install torch
+<span class="c"># Downloading torch-2.x-cu121…</span>
+<span class="c"># 2.7 GB</span>
+<span class="c">#   ├─ libtorch_cuda.so       (1.1 GB)</span>
+<span class="c">#   ├─ libcudnn*.so.9         (700 MB)</span>
+<span class="c">#   ├─ libcublasLt.so.12      (500 MB)</span>
+<span class="c">#   ├─ libnccl.so.2           (200 MB)</span>
+<span class="c">#   └─ everything else        (200 MB)</span>
+
+<span class="k">$</span> cat model.py
+<span class="k">import</span> torch
+<span class="n">x</span> = torch.randn(<span class="s">3</span>, <span class="s">3</span>)
+<span class="k">print</span>(<span class="n">x</span> @ <span class="n">x</span>.T)
+
+<span class="c"># 5 lines of code.</span>
+<span class="c"># ~8 GB on disk once venv is set up.</span>
+      </div>
+      <p class="text-xs text-slate-500 mt-2 mono">*sizes approximate, vary by release</p>
+    </div>
+
+    <div class="md:col-span-3">
+      <p class="text-slate-800 leading-relaxed">
+        This is binary distribution at its most extreme &mdash; and, to be fair, its
+        most successful. A researcher who has never heard the word "linker"
+        can, in ninety seconds, import a state-of-the-art GPU tensor library
+        and start training. That is a genuine miracle. It is also why the
+        directory containing their five-line script is now larger than every
+        game they own on Steam.
+      </p>
+      <p class="text-slate-800 leading-relaxed mt-3">
+        The interesting part is <em>why</em> it must be this big. PyTorch cannot
+        assume you have CUDA. It cannot assume which version. It cannot assume
+        cuDNN. It cannot assume a compatible libstdc++. The safe move &mdash; the
+        <em>only</em> move, given the ecosystem &mdash; is to bundle everything and
+        set <span class="mono">RPATH</span> to its own directory. Multiply by
+        every venv you have ever created, and you have a working definition of
+        modern ML disk usage.
+      </p>
+
+      <div class="mt-5 grid grid-cols-2 gap-4">
+        <div class="card p-4">
+          <p class="text-xs uppercase tracking-widest text-slate-600">Source-dist equivalent</p>
+          <p class="text-sm text-slate-700 mt-1">
+            You’d download a few hundred MB of source, spend 4 hours compiling
+            CUDA kernels against <em>your</em> toolkit, and end up with a
+            <span class="mono">build/</span> approximately the same size as the wheel &mdash;
+            except now <em>you</em> pay the CPU bill instead of NVIDIA’s CI cluster.
+          </p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs uppercase tracking-widest text-slate-600">The honest accounting</p>
+          <p class="text-sm text-slate-700 mt-1">
+            Binary distribution doesn’t make the bytes disappear. It moves them
+            from <span class="mono">target/</span> (where you can see them) to
+            <span class="mono">site-packages/</span> (where you can’t), and it
+            <em>copies</em> them once per environment.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- What you can do -->
+<section class="max-w-6xl mx-auto px-6 mt-20">
+  <div class="rule mb-4"></div>
+  <h2 class="display text-4xl font-black">6 &middot; Practical mitigations, per ecosystem</h2>
+
+  <div class="mt-6 space-y-3">
+    <details class="card p-5" open>
+      <summary class="flex items-center justify-between">
+        <span class="display text-xl font-bold">Rust / Bevy</span>
+        <span class="arrow text-slate-500">▸</span>
+      </summary>
+      <ul class="mt-3 text-sm text-slate-800 space-y-1 list-disc list-inside">
+        <li>Set <span class="mono">CARGO_TARGET_DIR</span> to a shared path so every project reuses one <span class="mono">target/</span>.</li>
+        <li>Use <span class="mono">sccache</span> or <span class="mono">cargo-cache</span> to prune old artifacts.</li>
+        <li>Enable Bevy’s <span class="mono">dynamic_linking</span> feature during development &mdash; a link, not a monomorphize.</li>
+        <li>Use the <span class="mono">mold</span> or <span class="mono">lld</span> linker; strip debug info you don’t use with <span class="mono">split-debuginfo = "unpacked"</span>.</li>
+        <li>Accept that <span class="mono">target/</span> is a cache, not a deliverable. Delete it whenever you feel like it.</li>
+      </ul>
+    </details>
+
+    <details class="card p-5">
+      <summary class="flex items-center justify-between">
+        <span class="display text-xl font-bold">C / C++</span>
+        <span class="arrow text-slate-500">▸</span>
+      </summary>
+      <ul class="mt-3 text-sm text-slate-800 space-y-1 list-disc list-inside">
+        <li><span class="mono">ccache</span> / <span class="mono">sccache</span> for compile caching.</li>
+        <li>Precompiled headers, unity builds, or modules (C++20) to fight the header explosion.</li>
+        <li><span class="mono">-g1</span> or <span class="mono">-gsplit-dwarf</span> to keep debug info manageable.</li>
+        <li>Use <span class="mono">vcpkg</span>/<span class="mono">Conan</span> in <em>binary cache</em> mode for dependencies; source-build only what you own.</li>
+      </ul>
+    </details>
+
+    <details class="card p-5">
+      <summary class="flex items-center justify-between">
+        <span class="display text-xl font-bold">Python / PyTorch</span>
+        <span class="arrow text-slate-500">▸</span>
+      </summary>
+      <ul class="mt-3 text-sm text-slate-800 space-y-1 list-disc list-inside">
+        <li>Use <span class="mono">uv</span> or <span class="mono">pip</span>'s shared cache; better yet, hard-link across venvs.</li>
+        <li>Pick a slim wheel variant (<span class="mono">torch</span> vs <span class="mono">torch-cpu</span>) when you don’t need CUDA.</li>
+        <li>In Docker, install big wheels in a dedicated layer so they cache across image rebuilds.</li>
+        <li>Consider <span class="mono">conda</span>/<span class="mono">mamba</span> for real system-level dedup of CUDA and friends.</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<!-- Verdict -->
+<section id="verdict" class="max-w-6xl mx-auto px-6 mt-20 mb-20">
+  <div class="rule mb-4"></div>
+  <h2 class="display text-4xl font-black">7 &middot; A verdict, of sorts</h2>
+
+  <div class="grid md:grid-cols-3 gap-8 mt-6">
+    <div class="md:col-span-2">
+      <p class="text-slate-800 leading-relaxed text-lg">
+        The 4&nbsp;GB Bevy <span class="mono">target/</span> is not a bug. It is
+        the visible face of an honest bargain: you get every line of every
+        dependency, compiled exactly for your machine, with a cache that makes
+        the second build nearly instantaneous. The C++ project you compare it to
+        looks smaller only because someone else already paid the bill, on
+        different hardware, months ago, and shipped you the leftovers.
+      </p>
+      <p class="text-slate-800 leading-relaxed text-lg mt-4">
+        Binary distribution is not evil &mdash; without it, there would be no
+        modern ML, no easy CUDA, no <span class="mono">brew install anything</span>.
+        But it is not <em>free</em> either. It just charges you in a currency you
+        don’t notice: duplicated multi-gigabyte libraries scattered across every
+        environment on your machine, an opaque supply chain, and a build you
+        cannot reproduce.
+      </p>
+      <p class="text-slate-800 leading-relaxed text-lg mt-4">
+        So the next time <span class="mono">du -sh target/</span> makes you wince,
+        remember: you are not paying <em>more</em> than the C++ or Python developer
+        next to you. You are just paying <em>visibly</em>. And in software, being
+        able to see the cost is usually the first step to controlling it.
+      </p>
+    </div>
+
+    <aside class="md:col-span-1">
+      <div class="card p-6">
+        <p class="text-xs uppercase tracking-widest text-slate-600">TL;DR</p>
+        <ol class="mt-3 text-sm space-y-2 list-decimal list-inside text-slate-800">
+          <li>Bevy compiles ~400 crates <strong>from source</strong>, in debug, with symbols.</li>
+          <li>C++ isn’t smaller &mdash; it just installs binaries instead of building them.</li>
+          <li>Binary distribution moves the bytes; it doesn’t delete them.</li>
+          <li>PyTorch is the reductio ad absurdum: 5 lines of code, 8 GB of dependencies.</li>
+          <li>Pick your poison: slow builds, or 14 copies of CUDA.</li>
+        </ol>
+      </div>
+
+      <div class="mt-5 text-right">
+        <span class="stamp" style="border-color:#2b6cd9;color:#2b6cd9;transform:rotate(3deg)">Filed &amp; Signed</span>
+      </div>
+    </aside>
+  </div>
+
+  <div class="rule mt-10"></div>
+  <p class="text-center text-xs mono text-slate-500 mt-4">
+    &mdash; end of issue &mdash; &nbsp;&middot;&nbsp; set <span class="mono">RUSTFLAGS="-C debuginfo=1"</span> and go outside
+  </p>
+</section>
+
+<script>
+  // Small nicety: soft-scroll for TOC links.
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const id = a.getAttribute('href').slice(1);
+      const el = document.getElementById(id);
+      if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+  });
+</script>
+</body>
+</html>

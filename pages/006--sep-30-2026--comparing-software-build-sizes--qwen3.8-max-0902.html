@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hello, world. 3.4 gigabytes. — A field guide to build artifacts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style>
+  :root{
+    --ink:#10151b;
+    --ink2:#171e26;
+    --ink3:#1f2833;
+    --paper:#edeeea;
+    --paper2:#e0e2dc;
+    --line:#c9ccc4;
+    --verm:#ff5a36;
+    --teal:#00a389;
+    --amber:#f5b942;
+    --blue:#3b7bf6;
+    --rose:#e8567f;
+    --mute:#7d8794;
+    --mute2:#5a6470;
+  }
+  *{ -webkit-tap-highlight-color: transparent; }
+  html{ scroll-behavior:smooth; }
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;
+    overflow-x:hidden;
+  }
+  .f-display{ font-family:"Bricolage Grotesque","IBM Plex Sans",sans-serif; font-stretch:100%; letter-spacing:-0.03em; }
+  .f-mono{ font-family:"IBM Plex Mono",ui-monospace,monospace; }
+
+  /* ---------- ambient background ---------- */
+  .bg-fx{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+  .bg-grid{
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(to right, rgba(16,21,27,.055) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(16,21,27,.055) 1px, transparent 1px);
+    background-size:64px 64px;
+    -webkit-mask-image:radial-gradient(ellipse 130% 90% at 50% 0%, #000 15%, transparent 92%);
+    mask-image:radial-gradient(ellipse 130% 90% at 50% 0%, #000 15%, transparent 92%);
+  }
+  /* washes live in a page-height layer so they travel down the document */
+  .bg-washes{ position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+  .bg-wash-a,.bg-wash-b,.bg-wash-c,.bg-wash-d{ position:absolute; border-radius:50%; }
+  .bg-wash-a{ width:56vw; height:56vw; left:-16vw; top:6vh; background:radial-gradient(circle, rgba(255,90,54,.16), transparent 63%); animation:drift 26s ease-in-out infinite alternate; }
+  .bg-wash-b{ width:46vw; height:46vw; right:-12vw; top:150vh; background:radial-gradient(circle, rgba(0,163,137,.17), transparent 63%); animation:drift 32s ease-in-out infinite alternate-reverse; }
+  .bg-wash-c{ width:44vw; height:44vw; left:16vw; top:330vh; background:radial-gradient(circle, rgba(59,123,246,.14), transparent 63%); animation:drift 29s ease-in-out infinite alternate; }
+  .bg-wash-d{ width:48vw; height:48vw; right:-8vw; top:520vh; background:radial-gradient(circle, rgba(245,185,66,.15), transparent 63%); animation:drift 34s ease-in-out infinite alternate-reverse; }
+  @keyframes drift{ from{ transform:translate3d(0,0,0) scale(1);} to{ transform:translate3d(3vw,-4vh,0) scale(1.12);} }
+  .noise{ position:absolute; inset:0; opacity:.32; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E"); }
+
+  .dark-band{ position:relative; background:var(--ink); color:var(--paper); }
+  .dark-band::after{ content:""; position:absolute; inset:0; pointer-events:none;
+    background-image:linear-gradient(to right, rgba(255,255,255,.045) 1px, transparent 1px),
+                     linear-gradient(to bottom, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size:64px 64px;
+    -webkit-mask-image:radial-gradient(ellipse 100% 70% at 30% 0%, #000, transparent 85%);
+    mask-image:radial-gradient(ellipse 100% 70% at 30% 0%, #000, transparent 85%); }
+
+  /* ---------- nav ---------- */
+  #nav{ backdrop-filter:blur(10px); background:rgba(16,21,27,.86); border-bottom:1px solid rgba(255,255,255,.09); }
+  #nav a{ position:relative; transition:color .2s; }
+  #nav a::after{ content:""; position:absolute; left:0; right:100%; bottom:-6px; height:2px; background:var(--verm); transition:right .28s cubic-bezier(.2,.8,.2,1); }
+  #nav a:hover::after, #nav a.on::after{ right:0; }
+  #prog{ transform-origin:0 50%; }
+
+  /* ---------- hero ---------- */
+  .mega{ font-size:clamp(3.2rem,10.5vw,9.5rem); line-height:.86; }
+  .kbd{ border:1px solid rgba(255,255,255,.2); border-bottom-width:2px; border-radius:4px; padding:1px 6px; font-size:.72em; }
+  .term{ background:#0b0f14; border:1px solid rgba(255,255,255,.12); box-shadow:0 40px 90px -40px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.06); }
+  .term-body{ min-height:326px; }
+  .tl{ opacity:0; transform:translateY(4px); animation:tlIn .32s forwards; }
+  @keyframes tlIn{ to{ opacity:1; transform:none; } }
+  .caret::after{ content:"▌"; color:var(--verm); animation:blink 1s steps(2) infinite; }
+  @keyframes blink{ 50%{opacity:0} }
+
+  /* ---------- ticker ---------- */
+  .ticker{ overflow:hidden; border-block:1px solid rgba(255,255,255,.12); }
+  .ticker-track{ display:flex; width:max-content; animation:slide 46s linear infinite; }
+  .ticker:hover .ticker-track{ animation-play-state:paused; }
+  @keyframes slide{ to{ transform:translateX(-50%); } }
+
+  /* ---------- reveal ---------- */
+  [data-reveal]{ opacity:0; transform:translateY(26px); transition:opacity .7s cubic-bezier(.2,.8,.2,1), transform .7s cubic-bezier(.2,.8,.2,1); }
+  [data-reveal].in{ opacity:1; transform:none; }
+
+  /* ---------- section furniture ---------- */
+  .eyebrow{ letter-spacing:.24em; text-transform:uppercase; font-size:.68rem; font-weight:600; }
+  .rule{ height:1px; background:linear-gradient(to right, var(--line), transparent); }
+  .secnum{ font-size:clamp(4rem,12vw,11rem); line-height:.8; color:transparent; -webkit-text-stroke:1.5px rgba(16,21,27,.16); }
+  .secnum-l{ -webkit-text-stroke-color:rgba(255,255,255,.16); }
+
+  /* ---------- bars ---------- */
+  .bar-row{ border-top:1px solid rgba(255,255,255,.1); transition:background .25s; }
+  .bar-row:hover{ background:rgba(255,255,255,.04); }
+  .bar-track{ height:22px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; position:relative; }
+  .bar-fill{ height:100%; width:0; transition:width 1.15s cubic-bezier(.16,1,.3,1); position:relative; overflow:hidden; }
+  .bar-fill::after{ content:""; position:absolute; inset:0; background:repeating-linear-gradient(115deg, rgba(255,255,255,.16) 0 6px, transparent 6px 13px); animation:hatch 1.4s linear infinite; }
+  @keyframes hatch{ to{ background-position:26px 0; } }
+
+  .stack{ display:flex; height:46px; border-radius:3px; overflow:hidden; }
+  .stack > div{ position:relative; transition:flex-grow .8s cubic-bezier(.16,1,.3,1), filter .2s; cursor:default; }
+  .stack > div:hover{ filter:brightness(1.22); }
+
+  /* ---------- cards ---------- */
+  .card{ background:#fff; border:1px solid var(--line); border-radius:4px; position:relative; transition:transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s, border-color .3s; }
+  .card:hover{ transform:translateY(-4px); box-shadow:0 24px 44px -30px rgba(16,21,27,.55); border-color:#a9ada3; }
+  .card-dark{ background:var(--ink2); border:1px solid rgba(255,255,255,.11); border-radius:4px; transition:border-color .3s, transform .3s; }
+  .card-dark:hover{ border-color:rgba(255,255,255,.3); transform:translateY(-3px); }
+
+  .tag{ display:inline-flex; align-items:center; gap:6px; border:1px solid currentColor; border-radius:999px; padding:2px 10px; font-size:.68rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
+
+  /* ---------- tabs ---------- */
+  .tab{ border:1px solid var(--line); background:#fff; padding:10px 16px; border-radius:3px; font-weight:600; font-size:.85rem; transition:all .22s; cursor:pointer; }
+  .tab:hover{ border-color:var(--ink); transform:translateY(-2px); }
+  .tab[aria-selected="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+
+  /* ---------- toggles ---------- */
+  .sw{ width:46px; height:24px; border-radius:999px; background:#cfd2cb; position:relative; cursor:pointer; transition:background .25s; flex:none; border:1px solid rgba(16,21,27,.14); }
+  .sw::after{ content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .25s cubic-bezier(.2,.8,.2,1); }
+  .sw[aria-checked="true"]{ background:var(--teal); }
+  .sw[aria-checked="true"]::after{ transform:translateX(22px); }
+
+  /* ---------- treemap ---------- */
+  .tm{ display:block; border:1px solid rgba(16,21,27,.2); border-radius:2px; padding:8px 10px; color:#fff; overflow:hidden; transition:transform .25s, filter .25s, box-shadow .25s; cursor:default; position:relative; }
+  .tm:hover{ transform:scale(1.025); z-index:5; filter:brightness(1.1); box-shadow:0 18px 34px -18px rgba(0,0,0,.7); }
+  .tm small{ display:block; opacity:.85; font-size:10px; }
+
+  input[type=range]{ -webkit-appearance:none; appearance:none; height:6px; border-radius:99px; background:linear-gradient(to right, var(--verm) var(--p,30%), rgba(16,21,27,.15) var(--p,30%)); outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:var(--ink); border:3px solid var(--verm); cursor:grab; box-shadow:0 2px 8px rgba(0,0,0,.35); transition:transform .15s; }
+  input[type=range]::-webkit-slider-thumb:active{ cursor:grabbing; transform:scale(1.15); }
+  input[type=range]::-moz-range-thumb{ width:20px; height:20px; border-radius:50%; background:var(--ink); border:3px solid var(--verm); cursor:grab; }
+
+  .hl-verm{ color:var(--verm); } .hl-teal{ color:var(--teal); } .hl-amber{ color:#c98f14; } .hl-blue{ color:var(--blue); }
+  .u{ text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:4px; text-decoration-color:rgba(255,90,54,.5); }
+
+  .marq-item{ display:inline-flex; align-items:center; gap:10px; padding:12px 26px; white-space:nowrap; border-right:1px solid rgba(255,255,255,.1); }
+
+  .glowline{ height:2px; background:linear-gradient(to right, transparent, var(--verm), var(--amber), var(--teal), transparent); }
+
+  ::selection{ background:var(--verm); color:#fff; }
+
+  .footnote{ font-size:.74rem; color:var(--mute2); line-height:1.6; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+    [data-reveal]{ opacity:1; transform:none; }
+  }
+</style>
+</head>
+<body class="relative">
+
+<div class="bg-washes" aria-hidden="true">
+  <div class="bg-wash-a"></div>
+  <div class="bg-wash-b"></div>
+  <div class="bg-wash-c"></div>
+  <div class="bg-wash-d"></div>
+</div>
+<div class="bg-fx" aria-hidden="true">
+  <div class="bg-grid"></div>
+  <div class="noise"></div>
+</div>
+
+<!-- ============ NAV ============ -->
+<header id="nav" class="fixed top-0 left-0 right-0 z-50">
+  <div class="max-w-[1400px] mx-auto px-5 lg:px-10 flex items-center justify-between h-14">
+    <a href="#top" class="flex items-center gap-2.5 text-[var(--paper)]">
+      <span class="w-2.5 h-2.5 rounded-full bg-[var(--verm)] inline-block"></span>
+      <span class="f-mono text-[11px] tracking-[.18em] uppercase opacity-80">artifact&nbsp;ledger</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-7 f-mono text-[11px] tracking-[.12em] uppercase text-[var(--paper)]/60">
+      <a href="#receipt" data-nav="receipt">01 Receipt</a>
+      <a href="#cpp" data-nav="cpp">02 C++</a>
+      <a href="#binary" data-nav="binary">03 Binary dist.</a>
+      <a href="#python" data-nav="python">04 Python</a>
+      <a href="#why" data-nav="why">05 Causes</a>
+      <a href="#reclaim" data-nav="reclaim">06 Reclaim</a>
+    </nav>
+    <div class="f-mono text-[11px] text-[var(--paper)]/45 hidden sm:block">3.40 GB</div>
+  </div>
+  <div id="prog" class="h-[2px] bg-[var(--verm)] w-full" style="transform:scaleX(0)"></div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section id="top" class="dark-band relative pt-24 pb-0 overflow-hidden">
+  <div class="relative z-10 max-w-[1400px] mx-auto px-5 lg:px-10 pt-10 lg:pt-16">
+    <div class="grid lg:grid-cols-12 gap-10 lg:gap-14 items-end">
+
+      <div class="lg:col-span-7">
+        <div class="flex flex-wrap items-center gap-3 mb-8">
+          <span class="tag text-[var(--verm)] f-mono">case file № 01</span>
+          <span class="f-mono text-[11px] tracking-[.16em] uppercase text-[var(--paper)]/45">bevy · c++ · pytorch · disk economics</span>
+        </div>
+
+        <h1 class="f-display mega font-extrabold text-[var(--paper)]">
+          Hello,&nbsp;world.<br>
+          <span class="text-[var(--verm)]">3.4&nbsp;gigabytes.</span>
+        </h1>
+
+        <p class="mt-8 text-lg lg:text-xl leading-relaxed text-[var(--paper)]/70 max-w-2xl">
+          Nine lines of Rust print a sentence. The <span class="f-mono text-[var(--paper)] text-base">target/</span> directory
+          that made it happen weighs more than a AAA game's textures. People conclude Rust is bloated and C++ is lean.
+          <span class="text-[var(--paper)] font-semibold">That conclusion is wrong</span> — the C++ bill is just paid by
+          somebody else, somewhere else, in a currency you never see.
+        </p>
+
+        <div class="mt-10 flex flex-wrap gap-x-10 gap-y-5">
+          <div>
+            <div class="f-display text-4xl font-bold text-[var(--amber)]"><span data-count="289" data-dur="1600">0</span></div>
+            <div class="f-mono text-[10px] uppercase tracking-[.16em] text-[var(--paper)]/45 mt-1">crates compiled<br>to print one line</div>
+          </div>
+          <div>
+            <div class="f-display text-4xl font-bold text-[var(--teal)]"><span data-count="16" data-dur="1400">0</span> KB</div>
+            <div class="f-mono text-[10px] uppercase tracking-[.16em] text-[var(--paper)]/45 mt-1">size of a C++<br>hello world binary</div>
+          </div>
+          <div>
+            <div class="f-display text-4xl font-bold text-[var(--rose)]"><span data-count="4.4" data-dec="1" data-dur="1800">0</span> GB</div>
+            <div class="f-mono text-[10px] uppercase tracking-[.16em] text-[var(--paper)]/45 mt-1">what <span class="f-mono">import torch</span><br>puts on your disk</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- terminal -->
+      <div class="lg:col-span-5">
+        <div class="term rounded-md overflow-hidden" data-reveal>
+          <div class="flex items-center gap-2 px-4 py-2.5 border-b border-white/10 bg-white/[.03]">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-[#28c840]"></span>
+            <span class="ml-3 f-mono text-[11px] text-white/40">~/bevy_hello — zsh</span>
+          </div>
+          <div id="termBody" class="term-body f-mono text-[12.5px] leading-[1.85] px-4 py-4 text-[var(--paper)]/85"></div>
+        </div>
+
+        <div class="mt-4">
+          <div class="flex justify-between f-mono text-[10px] uppercase tracking-[.14em] text-[var(--paper)]/40 mb-2">
+            <span>composition of the 3.40 GB</span><span>hover a segment</span>
+          </div>
+          <div class="stack" id="heroStack">
+            <div data-seg="rlib" style="flex:32.4;background:var(--verm)" title="rlib + rmeta — 1.10 GB"></div>
+            <div data-seg="incr" style="flex:38.2;background:var(--blue)" title="incremental/ — 1.30 GB"></div>
+            <div data-seg="dwarf" style="flex:17.6;background:var(--teal)" title="DWARF debug info — 0.60 GB"></div>
+            <div data-seg="build" style="flex:7.4;background:var(--amber)" title="build scripts + proc macros — 0.25 GB"></div>
+            <div data-seg="shader" style="flex:2.6;background:var(--rose)" title="naga / SPIR-V caches — 0.09 GB"></div>
+            <div data-seg="meta" style="flex:1.8;background:#6b7684" title="fingerprints, .d files — 0.06 GB"></div>
+          </div>
+          <div id="heroSegLabel" class="f-mono text-[11px] text-[var(--paper)]/50 mt-2 h-4">— the whole thing is a cache of work already done.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ticker -->
+  <div class="relative z-10 mt-16 ticker bg-black/25">
+    <div class="ticker-track f-mono text-[12px] uppercase tracking-[.12em] text-[var(--paper)]/55">
+      <span class="marq-item"><b class="text-[var(--verm)]">bevy hello world</b> target/debug 3.4 GB</span>
+      <span class="marq-item"><b class="text-[var(--amber)]">LLVM from source</b> build dir ≈ 25 GB</span>
+      <span class="marq-item"><b class="text-[var(--teal)]">Chromium</b> debug checkout + build ≈ 100 GB</span>
+      <span class="marq-item"><b class="text-[var(--rose)]">Unreal Engine</b> source build ≈ 150–250 GB</span>
+      <span class="marq-item"><b class="text-[var(--blue)]">Qt built from source</b> ≈ 20–40 GB</span>
+      <span class="marq-item"><b class="text-[var(--amber)]">pip install torch</b> ≈ 4.4 GB installed</span>
+      <span class="marq-item"><b class="text-[var(--verm)]">MSVC + Windows SDK</b> ≈ 7–12 GB on disk</span>
+      <span class="marq-item"><b class="text-[var(--teal)]">one .cpp with Eigen, -g</b> 40–80 MB object file</span>
+      <span class="marq-item"><b class="text-[var(--rose)]">#include &lt;iostream&gt;</b> ≈ 20,000 preprocessed lines</span>
+      <span class="marq-item"><b class="text-[var(--verm)]">bevy hello world</b> target/debug 3.4 GB</span>
+      <span class="marq-item"><b class="text-[var(--amber)]">LLVM from source</b> build dir ≈ 25 GB</span>
+      <span class="marq-item"><b class="text-[var(--teal)]">Chromium</b> debug checkout + build ≈ 100 GB</span>
+      <span class="marq-item"><b class="text-[var(--rose)]">Unreal Engine</b> source build ≈ 150–250 GB</span>
+      <span class="marq-item"><b class="text-[var(--blue)]">Qt built from source</b> ≈ 20–40 GB</span>
+      <span class="marq-item"><b class="text-[var(--amber)]">pip install torch</b> ≈ 4.4 GB installed</span>
+      <span class="marq-item"><b class="text-[var(--verm)]">MSVC + Windows SDK</b> ≈ 7–12 GB on disk</span>
+      <span class="marq-item"><b class="text-[var(--teal)]">one .cpp with Eigen, -g</b> 40–80 MB object file</span>
+      <span class="marq-item"><b class="text-[var(--rose)]">#include &lt;iostream&gt;</b> ≈ 20,000 preprocessed lines</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 01 RECEIPT ============ -->
+<section id="receipt" class="relative z-10 py-24 lg:py-32">
+  <div class="max-w-[1400px] mx-auto px-5 lg:px-10">
+    <div class="flex items-start gap-6 lg:gap-12 mb-14" data-reveal>
+      <div class="secnum f-display font-extrabold shrink-0">01</div>
+      <div class="pt-2 lg:pt-6">
+        <div class="eyebrow f-mono text-[var(--verm)] mb-3">the receipt, itemised</div>
+        <h2 class="f-display text-4xl lg:text-6xl font-bold leading-[0.95] max-w-3xl">
+          Nobody wrote 3.4 GB of code.<br>
+          <span class="text-[var(--mute)]">The build system did.</span>
+        </h2>
+        <p class="mt-5 max-w-2xl text-[17px] leading-relaxed text-[var(--ink)]/70">
+          <span class="f-mono text-[15px]">target/debug</span> is not "your program". It is a
+          <b>warehouse of intermediate representations</b>: static libraries for every dependency, a query-database of
+          partial compilation state so the next rebuild takes 2 seconds instead of 200, and a complete symbolic
+          description of every generic instantiation the debugger might ever ask about.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-12 gap-8">
+      <div class="lg:col-span-7 card-dark p-6 lg:p-9" data-reveal>
+        <div class="flex items-baseline justify-between mb-7">
+          <h3 class="f-display text-2xl font-bold text-[var(--paper)]">$ du -sh target/debug/*</h3>
+          <span class="f-mono text-[11px] text-[var(--paper)]/40">bevy 0.15 · rust 1.8x · linux · typical</span>
+        </div>
+        <div id="receiptBars" class="space-y-5"></div>
+        <div class="mt-8 pt-6 border-t border-white/10 flex items-end justify-between">
+          <div>
+            <div class="f-mono text-[11px] uppercase tracking-[.16em] text-[var(--paper)]/45">total</div>
+            <div class="f-display text-5xl font-extrabold text-[var(--verm)]"><span data-count="3.40" data-dec="2">0</span> GB</div>
+          </div>
+          <div class="text-right f-mono text-[11.5px] text-[var(--paper)]/45 leading-relaxed">
+            source code of main.rs: <span class="text-[var(--paper)]">214 bytes</span><br>
+            ratio: <span class="text-[var(--amber)]">≈ 17,000,000 : 1</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-5 space-y-4">
+        <div class="card p-6" data-reveal>
+          <div class="tag text-[var(--verm)] f-mono mb-4">misread #1</div>
+          <h4 class="f-display text-2xl font-bold leading-tight">"It's a cache. Caches are supposed to be big."</h4>
+          <p class="mt-3 text-[15px] leading-relaxed text-[var(--ink)]/70">
+            True — and that is exactly the point. A cache is <b>spent work kept for reuse</b>. Rust keeps it on your laptop,
+            in your project folder, visible in <span class="f-mono text-[13px]">du</span>. C++ keeps the same kind of work
+            inside <span class="f-mono text-[13px]">libfoo.so</span>, <span class="f-mono text-[13px]">foo.lib</span> and
+            <span class="f-mono text-[13px]">/usr/lib</span> — built once, on a maintainer's CI, and shipped to you as a
+            "dependency" of a few megabytes.
+          </p>
+        </div>
+        <div class="card p-6" data-reveal>
+          <div class="tag text-[var(--teal)] f-mono mb-4">misread #2</div>
+          <h4 class="f-display text-2xl font-bold leading-tight">"Release builds are what matter."</h4>
+          <p class="mt-3 text-[15px] leading-relaxed text-[var(--ink)]/70">
+            <span class="f-mono text-[13px]">target/release</span> for the same project is ~1.6 GB, and the shipped
+            executable is ~30 MB. The 3.4 GB is the <b>development loop tax</b> — the price of "edit, hit run, see a
+            window in 4 seconds". Every ecosystem pays that tax. Only some of them hide the invoice in a tarball.
+          </p>
+        </div>
+        <div class="card p-6" data-reveal>
+          <div class="tag text-[var(--blue)] f-mono mb-4">misread #3</div>
+          <h4 class="f-display text-2xl font-bold leading-tight">"C++ wouldn't need all this."</h4>
+          <p class="mt-3 text-[15px] leading-relaxed text-[var(--ink)]/70">
+            C++ needs <i>more</i>. It just doesn't need it <i>in your checkout</i>. Turn the page.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glowline"></div>
+
+<!-- ============ 02 C++ ============ -->
+<section id="cpp" class="relative z-10 py-24 lg:py-32">
+  <div class="max-w-[1400px] mx-auto px-5 lg:px-10">
+    <div class="flex items-start gap-6 lg:gap-12 mb-12" data-reveal>
+      <div class="secnum f-display font-extrabold shrink-0">02</div>
+      <div class="pt-2 lg:pt-6">
+        <div class="eyebrow f-mono text-[var(--teal)] mb-3">a project of the same scale</div>
+        <h2 class="f-display text-4xl lg:text-6xl font-bold leading-[0.95] max-w-4xl">
+          The C++ binary is 16 KB.<br>
+          <span class="text-[var(--verm)]">Here is the invoice you didn't receive.</span>
+        </h2>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2.5 mb-8" role="tablist" aria-label="Language comparison" data-reveal>
+      <button class="tab f-mono" role="tab" aria-selected="true" data-tab="cpp">C++ "hello world"</button>
+      <button class="tab f-mono" role="tab" aria-selected="false" data-tab="llvm">C++ at real scale</button>
+      <button class="tab f-mono" role="tab" aria-selected="false" data-tab="rust">Rust / Bevy</button>
+      <button class="tab f-mono" role="tab" aria-selected="false" data-tab="jvm">JVM &amp; managed runtimes</button>
+    </div>
+
+    <div class="grid lg:grid-cols-12 gap-8">
+      <div class="lg:col-span-7 card-dark p-7 lg:p-10" data-reveal>
+        <div id="panel" class="min-h-[430px]"></div>
+      </div>
+
+      <div class="lg:col-span-5">
+        <div class="card p-7" data-reveal>
+          <div class="eyebrow f-mono text-[var(--mute2)] mb-5">where the C++ bytes actually live</div>
+          <ul class="space-y-4">
+            <li class="flex gap-4 group">
+              <span class="f-mono text-[11px] font-semibold text-[var(--verm)] pt-1 shrink-0 w-16">TOOLCHAIN</span>
+              <p class="text-[15px] leading-relaxed text-[var(--ink)]/75">The compiler itself is a <b>gigabyte-scale C++ program</b>. Clang/LLVM installed: 1.5–3 GB. MSVC + Windows SDK: 7–12 GB. You don't build it — Microsoft and the LLVM project did, and they are a very large C++ project whose build directory is 25 GB.</p>
+            </li>
+            <li class="flex gap-4">
+              <span class="f-mono text-[11px] font-semibold text-[var(--teal)] pt-1 shrink-0 w-16">STL / CRT</span>
+              <p class="text-[15px] leading-relaxed text-[var(--ink)]/75"><span class="f-mono text-[13px]">libstdc++</span>, <span class="f-mono text-[13px]">libc</span>, the dynamic loader: prebuilt, preinstalled, shared by every process on the machine. The 16 KB binary is small <b>because it is not self-contained</b>.</p>
+            </li>
+            <li class="flex gap-4">
+              <span class="f-mono text-[11px] font-semibold text-[var(--amber)] pt-1 shrink-0 w-16">HEADERS</span>
+              <p class="text-[15px] leading-relaxed text-[var(--ink)]/75">Header-only libraries (Boost, Eigen, nlohmann, glm, Asio) ship <b>source, not binary</b> — and get recompiled into every translation unit that touches them. This is the part C++ and Rust share: monomorphisation is paid per use site, always.</p>
+            </li>
+            <li class="flex gap-4">
+              <span class="f-mono text-[11px] font-semibold text-[var(--blue)] pt-1 shrink-0 w-16">SYMBOLS</span>
+              <p class="text-[15px] leading-relaxed text-[var(--ink)]/75">Ship the PDB / <span class="f-mono text-[13px]">.dSYM</span> / <span class="f-mono text-[13px]">.debug</span> and the binary is no longer 16 KB. A game's symbol server runs into <b>hundreds of gigabytes</b> — the same DWARF that inflates Bevy's <span class="f-mono text-[13px]">target/</span>.</p>
+            </li>
+          </ul>
+        </div>
+
+        <div class="mt-4 card p-7 bg-[var(--ink)] border-[var(--ink)] text-[var(--paper)]" data-reveal>
+          <div class="eyebrow f-mono text-[var(--amber)] mb-3">the honest sentence</div>
+          <p class="f-display text-2xl lg:text-[28px] font-semibold leading-[1.15]">
+            "A C++ project of the same scale would not produce much smaller intermediates.
+            It would produce <span class="text-[var(--verm)]">none at all — on your machine</span>."
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 BINARY DISTRIBUTION ============ -->
+<section id="binary" class="dark-band relative z-10 py-24 lg:py-32 overflow-hidden">
+  <div class="relative z-10 max-w-[1400px] mx-auto px-5 lg:px-10">
+    <div class="flex items-start gap-6 lg:gap-12 mb-14" data-reveal>
+      <div class="secnum secnum-l f-display font-extrabold shrink-0">03</div>
+      <div class="pt-2 lg:pt-6">
+        <div class="eyebrow f-mono text-[var(--amber)] mb-3">the great hiding place</div>
+        <h2 class="f-display text-4xl lg:text-6xl font-bold leading-[0.95] max-w-4xl text-[var(--paper)]">
+          Binary distribution didn't remove the cost.<br>
+          <span class="text-[var(--paper)]/40">It moved the cost out of sight.</span>
+        </h2>
+        <p class="mt-6 max-w-2xl text-[17px] leading-relaxed text-[var(--paper)]/65">
+          Because C++ is genuinely hard to build — no standard package manager, no stable ABI, a combinatorial
+          configuration matrix — the ecosystem converged on <b class="text-[var(--paper)]">shipping prebuilt binaries</b>:
+          apt, Homebrew, vcpkg, Conan, vendor SDKs, DLLs next to the .exe. That decision is why "C++ feels lean".
+          It is also the source of a distinct and severe class of problems.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-6 mb-14">
+      <div class="card-dark p-7 lg:p-8" data-reveal>
+        <div class="flex items-center gap-3 mb-6">
+          <span class="w-8 h-8 rounded-full bg-[var(--teal)]/20 border border-[var(--teal)]/50 grid place-items-center f-mono text-[var(--teal)] text-sm">✓</span>
+          <h3 class="f-display text-2xl font-bold text-[var(--paper)]">What it genuinely buys</h3>
+        </div>
+        <ul class="space-y-3.5 text-[15px] leading-relaxed text-[var(--paper)]/70" id="proList"></ul>
+      </div>
+      <div class="card-dark p-7 lg:p-8" data-reveal>
+        <div class="flex items-center gap-3 mb-6">
+          <span class="w-8 h-8 rounded-full bg-[var(--verm)]/20 border border-[var(--verm)]/50 grid place-items-center f-mono text-[var(--verm)] text-sm">✕</span>
+          <h3 class="f-display text-2xl font-bold text-[var(--paper)]">What it quietly costs</h3>
+        </div>
+        <ul class="space-y-3.5 text-[15px] leading-relaxed text-[var(--paper)]/70" id="conList"></ul>
+      </div>
+    </div>
+
+    <!-- matrix explosion -->
+    <div class="card-dark p-7 lg:p-10" data-reveal>
+      <div class="grid lg:grid-cols-12 gap-10 items-center">
+        <div class="lg:col-span-5">
+          <div class="eyebrow f-mono text-[var(--rose)] mb-3">interactive · the combinatorial trap</div>
+          <h3 class="f-display text-3xl lg:text-4xl font-bold text-[var(--paper)] leading-[1.02]">
+            A prebuilt binary is a <span class="text-[var(--rose)]">point in a matrix</span>, not a package.
+          </h3>
+          <p class="mt-4 text-[15px] leading-relaxed text-[var(--paper)]/65">
+            Rust compiles from source per target and lets Cargo unify features — one recipe, any machine.
+            A C++ maintainer must instead <b class="text-[var(--paper)]">enumerate the matrix and publish a cell for each</b>.
+            Toggle constraints off and watch the number of artifacts they must build, test, sign and host explode.
+          </p>
+          <div class="mt-6 flex items-end gap-4">
+            <div>
+              <div class="f-display text-6xl lg:text-7xl font-extrabold text-[var(--amber)] leading-none"><span id="matrixN">972</span></div>
+              <div class="f-mono text-[11px] uppercase tracking-[.16em] text-[var(--paper)]/45 mt-2">artifacts to publish &amp; test</div>
+            </div>
+            <button id="matrixReset" class="f-mono text-[11px] uppercase tracking-[.14em] text-[var(--paper)]/50 border border-white/20 rounded px-3 py-2 hover:bg-white/10 hover:text-[var(--paper)] transition mb-1">reset</button>
+          </div>
+        </div>
+        <div class="lg:col-span-7">
+          <div id="matrix" class="grid sm:grid-cols-2 gap-3"></div>
+          <div class="mt-5 f-mono text-[12px] text-[var(--paper)]/45 leading-relaxed" id="matrixFormula"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 PYTHON ============ -->
+<section id="python" class="relative z-10 py-24 lg:py-32">
+  <div class="max-w-[1400px] mx-auto px-5 lg:px-10">
+    <div class="flex items-start gap-6 lg:gap-12 mb-12" data-reveal>
+      <div class="secnum f-display font-extrabold shrink-0">04</div>
+      <div class="pt-2 lg:pt-6">
+        <div class="eyebrow f-mono text-[var(--rose)] mb-3">when the bill arrives anyway</div>
+        <h2 class="f-display text-4xl lg:text-6xl font-bold leading-[0.95] max-w-4xl">
+          Six lines of Python.<br>
+          <span class="hl-verm">Four point four gigabytes.</span>
+        </h2>
+        <p class="mt-5 max-w-2xl text-[17px] leading-relaxed text-[var(--ink)]/70">
+          Python is the counter-example that proves the rule. It has perfect binary distribution — wheels, PyPI,
+          <span class="f-mono text-[14px]">pip install</span> and it works. And because the binaries are
+          <b>huge native runtimes</b> (CUDA, cuDNN, oneDNN, MKL, Triton) rather than compiled-from-source libraries,
+          the cost reappears as <b>bandwidth and disk, multiplied by every environment you ever create</b>.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-12 gap-8 items-start">
+      <div class="lg:col-span-4 space-y-4">
+        <div class="term rounded-md overflow-hidden" data-reveal>
+          <div class="flex items-center gap-2 px-4 py-2.5 border-b border-white/10 bg-white/[.03]">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#28c840]"></span>
+            <span class="ml-2 f-mono text-[11px] text-white/40">train.py</span>
+          </div>
+          <pre class="f-mono text-[12.5px] leading-[1.8] px-4 py-4 text-[var(--paper)]/85 overflow-x-auto"><span class="text-[var(--mute2)]"># six lines</span>
+<span style="color:#ff5a36">import</span> torch
+x = torch.randn(<span style="color:#f5b942">64</span>, <span style="color:#f5b942">3</span>, <span style="color:#f5b942">32</span>, <span style="color:#f5b942">32</span>).cuda()
+net = torch.nn.Conv2d(<span style="color:#f5b942">3</span>, <span style="color:#f5b942">16</span>, <span style="color:#f5b942">3</span>).cuda()
+<span style="color:#ff5a36">for</span> i <span style="color:#ff5a36">in</span> range(<span style="color:#f5b942">100</span>):
+    loss = net(x).pow(<span style="color:#f5b942">2</span>).mean()
+    loss.backward()</pre>
+          <div class="px-4 py-3 border-t border-white/10 bg-white/[.03] f-mono text-[11.5px] flex justify-between text-[var(--paper)]/60">
+            <span>$ du -sh .venv</span><span class="text-[var(--rose)] font-semibold">4.4G&nbsp;&nbsp;.venv</span>
+          </div>
+        </div>
+
+        <div class="card p-6" data-reveal>
+          <div class="eyebrow f-mono text-[var(--mute2)] mb-3">and the same code on Windows</div>
+          <p class="text-[15px] leading-relaxed text-[var(--ink)]/70">
+            The Windows wheel bundles CUDA <i>inside</i> <span class="f-mono text-[13px]">torch</span> itself:
+            a single <span class="f-mono text-[13px]">.whl</span> of roughly <b>2.5 GB</b> downloaded before it unpacks to
+            ~4 GB. Add a system CUDA Toolkit for another tool in your stack and you're carrying
+            <b>two complete copies of cuDNN and cuBLAS</b> on one SSD.
+          </p>
+        </div>
+      </div>
+
+      <div class="lg:col-span-8">
+        <div class="card p-6 lg:p-8" data-reveal>
+          <div class="flex flex-wrap items-baseline justify-between gap-3 mb-5">
+            <h3 class="f-display text-2xl font-bold">What <span class="f-mono text-xl">pip install torch</span> puts on disk</h3>
+            <span class="f-mono text-[11px] uppercase tracking-[.14em] text-[var(--mute2)]">installed size · cu12 wheels · approximate</span>
+          </div>
+          <div id="treemap" class="grid gap-1.5" style="grid-template-columns:repeat(12,minmax(0,1fr)); grid-auto-rows:minmax(38px,auto);"></div>
+          <p class="footnote mt-5">
+            Note what is <b>not</b> here: nothing was compiled on your machine. The build cost was paid once, by Meta's CI,
+            and amortised across every download. That is binary distribution working exactly as designed — and the design
+            still results in 4.4 GB, because <span class="f-mono">libtorch_cpu.so</span> is a genuinely enormous
+            statically-linked C++ program with CUDA kernels instantiated for nine GPU architectures.
+          </p>
+        </div>
+
+        <!-- multiplier -->
+        <div class="mt-6 card p-6 lg:p-8 bg-[var(--ink)] border-[var(--ink)] text-[var(--paper)]" data-reveal>
+          <div class="eyebrow f-mono text-[var(--amber)] mb-2">interactive · the multiplication</div>
+          <h3 class="f-display text-3xl font-bold leading-tight">Binary distribution is paid <span class="text-[var(--amber)]">per environment</span>, not per project.</h3>
+          <p class="mt-3 text-[15px] leading-relaxed text-[var(--paper)]/65 max-w-3xl">
+            Every venv, every conda env, every Docker image, every CI job without a warm cache, every student laptop in a
+            lecture hall re-materialises the same 4.4 GB. Caches and hardlinks help on one machine. They do nothing for
+            bandwidth, and nothing at all across machines.
+          </p>
+
+          <div class="mt-7 grid md:grid-cols-2 gap-8">
+            <div>
+              <label class="f-mono text-[11px] uppercase tracking-[.14em] text-[var(--paper)]/50 flex justify-between mb-3">
+                <span>environments (devs × venvs + CI runners)</span><span class="text-[var(--verm)]" id="envOut">40</span>
+              </label>
+              <input id="envRange" type="range" min="1" max="500" value="40" class="w-full">
+              <div class="mt-4 flex flex-wrap gap-2 f-mono text-[10.5px] text-[var(--paper)]/50" id="envPresets"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 content-start">
+              <div class="border border-white/12 rounded p-4">
+                <div class="f-display text-4xl font-extrabold text-[var(--verm)]"><span id="envGB">176</span></div>
+                <div class="f-mono text-[10px] uppercase tracking-[.14em] text-[var(--paper)]/45 mt-1">gigabytes materialised</div>
+              </div>
+              <div class="border border-white/12 rounded p-4">
+                <div class="f-display text-4xl font-extrabold text-[var(--teal)]"><span id="envTB">0.18</span></div>
+                <div class="f-mono text-[10px] uppercase tracking-[.14em] text-[var(--paper)]/45 mt-1">terabytes, worst case transfer</div>
+              </div>
+              <div class="border border-white/12 rounded p-4 col-span-2">
+                <div class="f-display text-2xl font-bold text-[var(--amber)] leading-tight" id="envEquiv">≈ 104 hours of 4K video</div>
+                <div class="f-mono text-[10px] uppercase tracking-[.14em] text-[var(--paper)]/45 mt-1">same bytes, for scale</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-7 pt-6 border-t border-white/10 grid sm:grid-cols-3 gap-5 f-mono text-[12px] leading-relaxed text-[var(--paper)]/55">
+            <div><b class="text-[var(--paper)] block mb-1">CUDA, four times over</b>PyTorch bundles its own CUDA. So does JAX. So does TensorFlow. So does conda's <span class="text-[var(--paper)]">cudatoolkit</span>. One workstation, four copies of cuDNN.</div>
+            <div><b class="text-[var(--paper)] block mb-1">Docker layers lie</b>A <span class="text-[var(--paper)]">pytorch/pytorch</span> image is ~7–8 GB compressed and routinely 20 GB on disk. Ten microservices from ten slightly different bases = ten full copies, layer cache or not.</div>
+            <div><b class="text-[var(--paper)] block mb-1">The fix is the same fix</b>Global package cache + hardlinks (<span class="text-[var(--paper)]">uv</span>, conda pkgs dir, pnpm-style stores) turn N×4.4 GB into 1×4.4 GB <i>per machine</i>. It works because the bytes are identical — which is the whole promise of binary distribution.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glowline"></div>
+
+<!-- ============ 05 WHY ============ -->
+<section id="why" class="relative z-10 py-24 lg:py-32">
+  <div class="max-w-[1400px] mx-auto px-5 lg:px-10">
+    <div class="flex items-start gap-6 lg:gap-12 mb-14" data-reveal>
+      <div class="secnum f-display font-extrabold shrink-0">05</div>
+      <div class="pt-2 lg:pt-6">
+        <div class="eyebrow f-mono text-[var(--blue)] mb-3">root causes, language-agnostic</div>
+        <h2 class="f-display text-4xl lg:text-6xl font-bold leading-[0.95] max-w-4xl">
+          Six reasons the bytes exist<br>
+          <span class="text-[var(--mute)]">in every compiled language.</span>
+        </h2>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-5" id="causes"></div>
+
+    <div class="mt-14 card p-8 lg:p-12" data-reveal>
+      <div class="grid lg:grid-cols-12 gap-10 items-center">
+        <div class="lg:col-span-7">
+          <div class="eyebrow f-mono text-[var(--verm)] mb-3">the actual dividing line</div>
+          <h3 class="f-display text-3xl lg:text-4xl font-bold leading-[1.05]">
+            It was never "Rust vs C++". It's <span class="u">ship-the-machine-code</span> vs <span class="u">ship-the-recipe</span>.
+          </h3>
+          <p class="mt-4 text-[16px] leading-relaxed text-[var(--ink)]/70">
+            A JVM library ships bytecode once; the runtime is shared and already installed; a Spring Boot fat jar is 40 MB
+            and its dependencies are 40 MB of <i>portable</i> bytecode usable by every project on the box. A .NET assembly
+            is the same. Go compiles to machine code but has no generics explosion of the C++/Rust kind, a fast linker and
+            a shared build cache in <span class="f-mono text-[14px]">$GOCACHE</span> — hello world builds in 0.3 s from
+            a 300 MB cache. Rust and C++ sit at the other extreme: <b>every user recompiles the world</b>, and gets
+            maximal runtime performance and zero runtime dependency in exchange.
+          </p>
+        </div>
+        <div class="lg:col-span-5">
+          <div class="space-y-3" id="spectrum"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 06 RECLAIM ============ -->
+<section id="reclaim" class="dark-band relative z-10 py-24 lg:py-32 overflow-hidden">
+  <div class="relative z-10 max-w-[1400px] mx-auto px-5 lg:px-10">
+    <div class="flex items-start gap-6 lg:gap-12 mb-12" data-reveal>
+      <div class="secnum secnum-l f-display font-extrabold shrink-0">06</div>
+      <div class="pt-2 lg:pt-6">
+        <div class="eyebrow f-mono text-[var(--teal)] mb-3">interactive · what you can do about it</div>
+        <h2 class="f-display text-4xl lg:text-6xl font-bold leading-[0.95] max-w-4xl text-[var(--paper)]">
+          Reclaim 3 GB without<br>giving up the 4-second rebuild.
+        </h2>
+        <p class="mt-5 max-w-2xl text-[17px] leading-relaxed text-[var(--paper)]/65">
+          Every lever trades something. Toggle them and watch the bar. The point isn't the exact numbers — it's that
+          <b class="text-[var(--paper)]">almost all of the 3.4 GB is optional</b>, and the defaults are chosen for
+          developer experience, not disk usage.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-12 gap-8">
+      <div class="lg:col-span-7 card-dark p-6 lg:p-8" data-reveal>
+        <div class="flex items-end justify-between mb-2">
+          <div class="f-mono text-[11px] uppercase tracking-[.16em] text-[var(--paper)]/45">target/debug</div>
+          <div class="f-display text-5xl font-extrabold text-[var(--verm)]"><span id="sizeOut">3.40</span><span class="text-2xl text-[var(--paper)]/40 ml-1">GB</span></div>
+        </div>
+        <div class="h-11 rounded overflow-hidden flex bg-white/[.06] mb-2">
+          <div id="keepBar" class="h-full transition-all duration-700 ease-out" style="width:100%;background:linear-gradient(90deg,var(--verm),#ff8360)"></div>
+        </div>
+        <div class="flex justify-between f-mono text-[11px] text-[var(--paper)]/40 mb-8">
+          <span id="savedOut">0.00 GB reclaimed</span>
+          <span id="pctOut">0% smaller</span>
+        </div>
+        <div id="levers" class="space-y-2"></div>
+      </div>
+
+      <div class="lg:col-span-5 space-y-4">
+        <div class="card-dark p-7" data-reveal>
+          <div class="eyebrow f-mono text-[var(--amber)] mb-4">free wins, no tradeoff</div>
+          <ul class="space-y-3 text-[15px] leading-relaxed text-[var(--paper)]/70 f-mono-ish" id="freeWins"></ul>
+        </div>
+        <div class="card-dark p-7" data-reveal>
+          <div class="eyebrow f-mono text-[var(--rose)] mb-4">the ecosystem-level fixes</div>
+          <p class="text-[15px] leading-relaxed text-[var(--paper)]/65">
+            Cranelift as an alternative codegen backend (<span class="f-mono text-[13px]">-Zcodegen-backend=cranelift</span>)
+            cuts debug build time dramatically at the cost of slower runtime code. <span class="f-mono text-[13px]">sccache</span>
+            and a shared <span class="f-mono text-[13px]">CARGO_TARGET_DIR</span> deduplicate work across projects — which is
+            precisely the trick binary distribution uses, applied at the level of <i>your</i> cache instead of a distro's.
+            <b class="text-[var(--paper)]">Rust is converging on C++'s answer: build it once, share the artifact.</b>
+            That's what a build cache is.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CLOSING ============ -->
+<section class="relative z-10 py-24 lg:py-32">
+  <div class="max-w-[1100px] mx-auto px-5 lg:px-10 text-center" data-reveal>
+    <div class="eyebrow f-mono text-[var(--verm)] mb-6">closing argument</div>
+    <h2 class="f-display text-4xl lg:text-7xl font-extrabold leading-[0.95]">
+      The bytes were <span class="text-[var(--mute)]">always</span> there.
+    </h2>
+    <p class="mt-8 text-lg lg:text-xl leading-relaxed text-[var(--ink)]/70 max-w-3xl mx-auto">
+      Compiled software of any real size requires gigabytes of intermediate machine code, debug information and
+      monomorphised templates. That is physics plus a design choice about static linking. The only question is
+      <b>who holds the bytes, when, and how many copies exist.</b>
+    </p>
+
+    <div class="mt-14 grid md:grid-cols-3 gap-5 text-left">
+      <div class="card p-6" data-reveal>
+        <div class="f-mono text-[11px] uppercase tracking-[.16em] text-[var(--verm)] mb-3">rust pays</div>
+        <p class="text-[15px] leading-relaxed text-[var(--ink)]/72">Up front, locally, in full — on every developer's SSD, for every project, visibly. Enormous disk and first-build cost; in exchange: reproducible builds, no ABI, one artifact per source revision, and no DLL hell.</p>
+      </div>
+      <div class="card p-6" data-reveal>
+        <div class="f-mono text-[11px] uppercase tracking-[.16em] text-[var(--teal)] mb-3">c++ pays</div>
+        <p class="text-[15px] leading-relaxed text-[var(--ink)]/72">Deferred, centrally, invisibly — by distro maintainers, vendor CI, and package-manager build farms. Cheap for you, until you need a configuration nobody published. Then you pay the whole 25 GB yourself, at 3 a.m., with a linker error.</p>
+      </div>
+      <div class="card p-6" data-reveal>
+        <div class="f-mono text-[11px] uppercase tracking-[.16em] text-[var(--rose)] mb-3">python pays</div>
+        <p class="text-[15px] leading-relaxed text-[var(--ink)]/72">In bandwidth and duplication, per environment, forever. Three lines of import is a 4.4 GB download — and because the binaries are opaque native blobs, you cannot shrink them, only cache them.</p>
+      </div>
+    </div>
+
+    <div class="mt-16 pt-10 border-t border-[var(--line)] grid sm:grid-cols-3 gap-8 text-left">
+      <div>
+        <div class="f-display text-5xl font-extrabold hl-verm"><span data-count="17" data-dur="1500">0</span>M:1</div>
+        <p class="mt-2 text-[14px] text-[var(--ink)]/60 leading-relaxed">bytes of intermediate artifact per byte of source, for a Bevy hello world.</p>
+      </div>
+      <div>
+        <div class="f-display text-5xl font-extrabold" style="color:var(--teal)"><span data-count="972" data-dur="1900">0</span></div>
+        <p class="mt-2 text-[14px] text-[var(--ink)]/60 leading-relaxed">binary variants a C++ library may need to publish for a normal support matrix.</p>
+      </div>
+      <div>
+        <div class="f-display text-5xl font-extrabold" style="color:var(--rose)">N × 4.4<span class="text-2xl"> GB</span></div>
+        <p class="mt-2 text-[14px] text-[var(--ink)]/60 leading-relaxed">the Python bill, where N is every environment that has ever existed on your team.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="dark-band relative z-10 py-12">
+  <div class="relative z-10 max-w-[1400px] mx-auto px-5 lg:px-10 flex flex-col md:flex-row gap-6 justify-between items-start">
+    <div>
+      <div class="f-display text-xl font-bold text-[var(--paper)]">Artifact Ledger</div>
+      <p class="f-mono text-[11px] text-[var(--paper)]/40 mt-2 max-w-xl leading-relaxed">
+        All figures are representative order-of-magnitude values for mid-2020s toolchains (Rust 1.8x / Bevy 0.15,
+        PyTorch 2.x + CUDA 12, LLVM 18, MSVC 2022) on Linux or macOS unless stated. Your machine will differ —
+        sometimes by 2×. Run <span class="text-[var(--paper)]">du -sh</span> and check.
+      </p>
+    </div>
+    <div class="f-mono text-[11px] text-[var(--paper)]/35 leading-relaxed">
+      $ du -sh /*<br>
+      built with HTML, CSS, JS · no build step · <span class="text-[var(--teal)]">0 GB of intermediates</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ================= utilities ================= */
+const $ = (s,c=document)=>c.querySelector(s);
+const $$ = (s,c=document)=>[...c.querySelectorAll(s)];
+const fmt = (n,d=2)=>n.toFixed(d);
+
+/* scroll progress */
+const prog = $('#prog');
+addEventListener('scroll',()=>{
+  const h = document.documentElement;
+  const p = h.scrollTop/(h.scrollHeight-h.clientHeight||1);
+  prog.style.transform = `scaleX(${p})`;
+},{passive:true});
+
+/* reveal + counters */
+const io = new IntersectionObserver((es)=>{
+  es.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('in');
+      $$('[data-count]',e.target).forEach(runCount);
+      $$('.bar-fill',e.target).forEach(b=>{ b.style.width = b.dataset.w; });
+      io.unobserve(e.target);
+    }
+  });
+},{threshold:.15, rootMargin:'0px 0px -8% 0px'});
+function observeAll(){ $$('[data-reveal]').forEach(el=>io.observe(el)); }
+
+function runCount(el){
+  if(el.dataset.done) return; el.dataset.done=1;
+  const target = parseFloat(el.dataset.count);
+  const dec = parseInt(el.dataset.dec||0);
+  const dur = parseInt(el.dataset.dur||1400);
+  const t0 = performance.now();
+  const tick = (t)=>{
+    const k = Math.min(1,(t-t0)/dur);
+    const e = 1-Math.pow(1-k,3);
+    el.textContent = (target*e).toFixed(dec);
+    if(k<1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+/* top-level counters (not inside a reveal) */
+const io2 = new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ runCount(e.target); io2.unobserve(e.target);} }),{threshold:.4});
+$$('[data-count]').forEach(el=>io2.observe(el));
+
+/* nav active */
+const navLinks = $$('[data-nav]');
+const secs = navLinks.map(a=>document.getElementById(a.dataset.nav));
+const navIO = new IntersectionObserver(es=>{
+  es.forEach(e=>{
+    if(e.isIntersecting){
+      navLinks.forEach(a=>a.classList.toggle('on', a.dataset.nav===e.target.id));
+    }
+  });
+},{rootMargin:'-45% 0px -50% 0px'});
+secs.forEach(s=>s&&navIO.observe(s));
+
+/* ================= hero terminal ================= */
+const termLines = [
+  {t:'$ cargo new bevy_hello && cd bevy_hello', c:'text-[var(--paper)]/55'},
+  {t:'$ cargo add bevy', c:'text-[var(--paper)]/55'},
+  {t:'    Adding bevy v0.15.x to dependencies', c:'text-[var(--teal)]'},
+  {t:'$ cat src/main.rs', c:'text-[var(--paper)]/55'},
+  {t:'    fn main() { bevy::prelude::App::new().run(); }', c:'text-[var(--amber)]'},
+  {t:'    // 9 lines of actual code, including use statements', c:'text-[var(--paper)]/30'},
+  {t:'$ cargo build', c:'text-[var(--paper)]/55'},
+  {t:'    Compiling 289 crates …', c:'text-[var(--paper)]/70'},
+  {t:'    Finished `dev` profile [unoptimized + debuginfo] in 3m 41s', c:'text-[var(--teal)]'},
+  {t:'$ du -sh target/debug', c:'text-[var(--paper)]/55'},
+  {t:'    3.4G    target/debug', c:'text-[var(--verm)] font-bold'},
+  {t:'$ ls target/debug | wc -l && find target -name "*.rlib" | wc -l', c:'text-[var(--paper)]/55'},
+  {t:'    6 directories · 312 rlib files · 1.3 GB of `incremental/`', c:'text-[var(--paper)]/70'},
+];
+const termBody = $('#termBody');
+let ti=0;
+function typeTerm(){
+  if(ti>=termLines.length){
+    const c=document.createElement('div');
+    c.className='tl f-mono caret text-[var(--paper)]/55';
+    c.innerHTML='$&nbsp;';
+    termBody.appendChild(c);
+    return;
+  }
+  const l = termLines[ti++];
+  const d = document.createElement('div');
+  d.className = 'tl '+l.c;
+  d.innerHTML = l.t.replace(/</g,'&lt;');
+  termBody.appendChild(d);
+  setTimeout(typeTerm, l.t.startsWith('$')?420:230);
+}
+setTimeout(typeTerm, 500);
+
+/* hero stack hover */
+const segNames = {
+  rlib:'312 static libraries (.rlib/.rmeta) — 1.10 GB · every dependency, compiled whole, for one target',
+  incr:'incremental/ — 1.30 GB · a query database so the next edit rebuilds in seconds, not minutes',
+  dwarf:'DWARF debug info — 0.60 GB · a symbolic map of every generic instantiation, for lldb/gdb',
+  build:'build scripts + proc macros — 0.25 GB · programs compiled in order to be *run during* your build',
+  shader:'naga / SPIR-V / WGSL caches — 0.09 GB · bevy_render pre-transpiles shaders for every backend',
+  meta:'fingerprints, .d dep-info, hashes — 0.06 GB · Cargo\'s memory of what is already up to date'
+};
+$$('#heroStack > div').forEach(s=>{
+  s.addEventListener('mouseenter',()=>$('#heroSegLabel').textContent = '▸ '+segNames[s.dataset.seg]);
+  s.addEventListener('mouseleave',()=>$('#heroSegLabel').textContent = '— the whole thing is a cache of work already done.');
+});
+
+/* ================= 01 receipt bars ================= */
+const receipt = [
+  {n:'incremental/', s:'1.30 GB', v:38.2, c:'var(--blue)', d:'Query-based compiler state. Deleted safely; costs a full recompile next time.'},
+  {n:'deps/*.rlib + *.rmeta', s:'1.10 GB', v:32.4, c:'var(--verm)', d:'289 crates × one static library each, plus metadata for downstream type-checking.'},
+  {n:'DWARF debug info', s:'0.60 GB', v:17.6, c:'var(--teal)', d:'Inlined into the .o/.rlib on Linux & macOS. Types, scopes, every monomorphisation.'},
+  {n:'build/ (scripts + proc-macros)', s:'0.25 GB', v:7.4, c:'var(--amber)', d:'Native executables built solely to run at compile time: bevy_macro, shaderc, zstd-sys…'},
+  {n:'naga / SPIR-V caches', s:'0.09 GB', v:2.6, c:'var(--rose)', d:'Pre-transpiled shaders for Vulkan, Metal, DX12, GL and WebGPU.'},
+  {n:'fingerprints + .d files', s:'0.06 GB', v:1.8, c:'#6b7684', d:'Hashes of every input, so Cargo knows what to skip.'},
+];
+$('#receiptBars').innerHTML = receipt.map(r=>`
+  <div class="bar-row py-4 px-2 -mx-2">
+    <div class="flex items-baseline justify-between gap-4 mb-2">
+      <span class="f-mono text-[13.5px] text-[var(--paper)]">${r.n}</span>
+      <span class="f-mono text-[13px] font-semibold" style="color:${r.c}">${r.s}</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" data-w="${r.v}%" style="background:${r.c}"></div></div>
+    <p class="mt-2 text-[13px] leading-relaxed text-[var(--paper)]/45">${r.d}</p>
+  </div>`).join('');
+
+/* ================= 02 tabs ================= */
+const panels = {
+  cpp:{
+    title:'The 16 KB illusion',
+    stat:['16 KB','a stripped, dynamically linked C++ hello world on Linux'],
+    rows:[
+      ['main.cpp','41 bytes','the part you wrote'],
+      ['preprocessed <iostream>','~20,000 lines','what the compiler actually reads'],
+      ['object file (no -g)','~2.4 KB','your code alone'],
+      ['linked binary','16 KB','because libc, libstdc++ and ld.so are already on the system'],
+      ['the runtime you linked against','~30 MB','/usr/lib/x86_64-linux-gnu/libstdc++.so.6 + libc — installed by your distro, built by your distro'],
+      ['the compiler that built it','1.5–3 GB','clang/LLVM installed; 7–12 GB for MSVC + Windows SDK'],
+      ['LLVM\'s own build directory','≈ 25 GB','what it cost to produce that 1.5 GB compiler'],
+    ],
+    note:'C++ hello world is small for one reason only: <b>nothing in it was built by you</b>. The binary is a thin veneer over a prebuilt toolchain, a prebuilt standard library and a prebuilt C runtime. Subtract those and the picture inverts — a fully static, symbol-carrying build of the same program is 2–8 MB, and the toolchain behind it is gigabytes.'
+  },
+  llvm:{
+    title:'C++ at the scale Bevy actually is',
+    stat:['≈ 25 GB','build directory of LLVM/Clang, release + assertions'],
+    rows:[
+      ['LLVM / Clang','≈ 25 GB','3M lines of C++. Debug builds: 60 GB+'],
+      ['Chromium','≈ 100 GB','~35M lines. A single .o with -g can exceed 100 MB'],
+      ['Unreal Engine (source)','150–250 GB','plus 40 GB of installed engine binaries and derived data cache'],
+      ['Qt from source','20–40 GB','and 6 GB installed for the binaries alone'],
+      ['OpenCV + contrib','3–6 GB','MOC-generated code, per-architecture kernel instantiation'],
+      ['One Eigen-heavy .cpp, -g','40–80 MB','header-only templates: the same instantiations, per translation unit'],
+      ['ccache for a mid-size project','5–50 GB','the ecosystem\'s own admission that recompilation is the default state'],
+    ],
+    note:'These are <b>the same kind of bytes</b> that fill <span class="f-mono">target/debug</span>: object files, template instantiations, debug info, incremental state. The difference is not size — it is <b>who owns the directory</b>. Bevy\'s intermediates land on your disk. Chromium\'s land on Google\'s, and reach you as a 120 MB installer.'
+  },
+  rust:{
+    title:'Rust / Bevy, honestly stated',
+    stat:['3.40 GB','target/debug for a nine-line program'],
+    rows:[
+      ['crates compiled','289','bevy_render alone pulls wgpu, naga, spirv, image, zstd…'],
+      ['target/debug','3.4 GB','dev profile, default settings'],
+      ['target/release','≈ 1.6 GB','optimised; the shipped binary is ~30 MB'],
+      ['shipped executable','30 MB','self-contained. No runtime, no DLLs, no libstdc++ dependency'],
+      ['rebuild after one edit','2–6 s','this is what the 1.3 GB of incremental/ is buying'],
+      ['clean rebuild, warm sccache','20–40 s','the binary-distribution trick, applied locally'],
+      ['ABI surface','none','static linking: no version skew, no DLL hell, no ODR violations'],
+    ],
+    note:'Rust chose <b>maximum transparency and maximum locality</b>: you see every byte, you build every byte, you can rebuild any dependency from source with one flag. The bill is large, immediate and itemised — which is precisely why it <i>feels</i> worse than C++, even though the underlying work is comparable.'
+  },
+  jvm:{
+    title:'The other model entirely',
+    stat:['40 MB','a Spring Boot fat jar with 80 dependencies'],
+    rows:[
+      ['Java hello world .class','~1 KB','bytecode, not machine code'],
+      ['JDK installed','300–600 MB','one shared runtime for every JVM app on the machine'],
+      ['Maven ~/.m2 for a big project','1–3 GB','but jars are portable bytecode — one artifact serves every OS'],
+      ['compilation model','JIT at runtime','the expensive machine-code generation happens once per process, in memory, and is thrown away'],
+      ['.NET assemblies','similar','IL + a shared CoreCLR; single-file publish is 60–90 MB'],
+      ['Go','2 MB binary','machine code, but a shared $GOCACHE and far less generic explosion'],
+      ['artifacts per platform','1','bytecode is architecture-independent'],
+    ],
+    note:'Managed runtimes made the opposite trade: <b>one shared runtime, portable intermediate code, machine code generated at run time and discarded.</b> Artifacts stay tiny, cross-platform distribution is trivial, and peak throughput can even exceed AOT. The cost is a 400 MB runtime, startup latency, and no control over memory layout — the exact things Rust and C++ refuse to give up.'
+  }
+};
+function renderPanel(k){
+  const p = panels[k];
+  $('#panel').innerHTML = `
+    <div style="animation:tlIn .4s forwards">
+      <h3 class="f-display text-3xl font-bold text-[var(--paper)]">${p.title}</h3>
+      <div class="mt-5 mb-7 flex items-baseline gap-4">
+        <div class="f-display text-5xl font-extrabold text-[var(--amber)]">${p.stat[0]}</div>
+        <div class="f-mono text-[12px] text-[var(--paper)]/50 max-w-xs leading-relaxed">${p.stat[1]}</div>
+      </div>
+      <div class="border-t border-white/10">
+        ${p.rows.map(r=>`
+          <div class="grid grid-cols-12 gap-3 py-3 border-b border-white/[.07] hover:bg-white/[.04] transition items-baseline">
+            <div class="col-span-5 sm:col-span-4 f-mono text-[13px] text-[var(--paper)]/85">${r[0]}</div>
+            <div class="col-span-7 sm:col-span-3 f-mono text-[13px] font-semibold text-[var(--teal)]">${r[1]}</div>
+            <div class="col-span-12 sm:col-span-5 text-[12.5px] leading-relaxed text-[var(--paper)]/45">${r[2]}</div>
+          </div>`).join('')}
+      </div>
+      <p class="mt-6 text-[15px] leading-relaxed text-[var(--paper)]/70 border-l-2 pl-5" style="border-color:var(--verm)">${p.note}</p>
+    </div>`;
+}
+$$('[data-tab]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    $$('[data-tab]').forEach(x=>x.setAttribute('aria-selected', x===b));
+    renderPanel(b.dataset.tab);
+  });
+});
+renderPanel('cpp');
+
+/* ================= 03 pros / cons ================= */
+const pros = [
+  ['Build times collapse for consumers.','Nobody compiles OpenSSL, ICU or Boost. apt does 40 packages in 30 seconds. This is the single biggest reason C++ "feels" efficient.'],
+  ['The expensive work is amortised.','One optimised, PGO+LTO-tuned build of libstdc++ serves 100,000 packages. Recompiling that per project would be pure waste.'],
+  ['A stable shared runtime is possible.','One libc, one libstdc++, one CUDA — memory allocated in a library can be freed by the caller because everyone agrees on the allocator.'],
+  ['Binary compatibility spans years.','A .so built in 2014 still loads. Symbol versioning (GLIBC_2.34) makes forward compatibility a solved-ish problem on Linux.'],
+  ['It works offline and on weak hardware.','No 40-minute first build on a laptop. This is why Python + PyTorch could make GPU computing accessible to people who have never seen a Makefile.'],
+];
+const cons = [
+  ['No ABI means no universal binary.','C++ has no stable ABI. MSVC and MinGW objects cannot link. Clang and MSVC STLs cannot mix. Debug and Release CRTs must not meet. Hence the matrix — hundreds of variants, or "sorry, build it yourself".'],
+  ['Diamond dependencies and ODR violations.','Two libraries each statically linking a different version of protobuf in one process = duplicate globals, one-definition-rule violations, and crashes that cannot be debugged from the symptom.'],
+  ['Optimisation stops at the boundary.','No cross-library inlining, no whole-program LTO, no constant propagation past the .so edge. The prebuilt binary is generic; your source build could be 10–30% faster.'],
+  ['Patching lags and provenance is opaque.','You inherit whatever compiler flags, allocator and hardening the maintainer chose. A CVE fix means waiting for a rebuild — and trusting that the binary matches the source it claims to.'],
+  ['Debugging is half-blind.','Without matching PDBs you cannot step into the library, and the stack trace ends at a symbol name. "It crashes inside someone else\'s .so" is a whole genre.'],
+  ['Version skew is a permanent condition.','DLL hell, SONAME bumps, conda/pip resolver conflicts, Ubuntu 20.04 vs 24.04, CUDA 11 vs 12 — the ecosystem spends an enormous amount of energy solving a problem source builds do not have.'],
+  ['It hides the true cost, so nobody optimises it.','This is the deepest one. Because the gigabytes never appear on the user\'s disk, the pressure to make builds smaller and faster is diffuse and weak. Rust feels bloated because it is honest.'],
+];
+$('#proList').innerHTML = pros.map(p=>`
+  <li class="pl-4 border-l-2 border-[var(--teal)]/45 hover:border-[var(--teal)] transition">
+    <b class="text-[var(--paper)] block mb-1">${p[0]}</b>${p[1]}
+  </li>`).join('');
+$('#conList').innerHTML = cons.map(p=>`
+  <li class="pl-4 border-l-2 border-[var(--verm)]/45 hover:border-[var(--verm)] transition">
+    <b class="text-[var(--paper)] block mb-1">${p[0]}</b>${p[1]}
+  </li>`).join('');
+
+/* ================= matrix explosion ================= */
+const dims = [
+  {k:'os', label:'Operating system', opts:['linux','macos','windows'], n:3},
+  {k:'arch', label:'Architecture', opts:['x86_64','aarch64'], n:2},
+  {k:'cc', label:'Compiler / toolchain', opts:['MSVC','Clang','GCC'], n:3},
+  {k:'crt', label:'CRT & linkage', opts:['/MD dyn','/MT static','libstdc++','libc++'], n:3},
+  {k:'cfg', label:'Build config', opts:['Debug','Release','RelWithDebInfo'], n:3},
+  {k:'std', label:'C++ standard / ABI tag', opts:['C++17','C++20','cxx11 ABI','pre-cxx11'], n:2},
+];
+const active = Object.fromEntries(dims.map(d=>[d.k,true]));
+$('#matrix').innerHTML = dims.map(d=>`
+  <div class="flex items-center justify-between gap-3 border border-white/12 rounded p-3.5 hover:border-white/30 transition">
+    <div class="min-w-0">
+      <div class="f-mono text-[12.5px] text-[var(--paper)] truncate">${d.label}</div>
+      <div class="f-mono text-[10.5px] text-[var(--paper)]/40 truncate mt-0.5">${d.opts.join(' · ')}</div>
+    </div>
+    <div class="flex items-center gap-3 shrink-0">
+      <span class="f-display text-xl font-bold ${''}" data-mn="${d.k}">${d.n}</span>
+      <div class="sw" role="switch" tabindex="0" aria-checked="true" data-sw="${d.k}" aria-label="${d.label}"></div>
+    </div>
+  </div>`).join('');
+
+function updateMatrix(){
+  let prod = 1; const parts=[];
+  dims.forEach(d=>{
+    const v = active[d.k] ? d.n : 1;
+    prod *= v; parts.push(v);
+    $(`[data-mn="${d.k}"]`).textContent = v;
+    $(`[data-mn="${d.k}"]`).style.color = active[d.k] ? 'var(--amber)' : 'rgba(237,238,234,.35)';
+  });
+  $('#matrixN').textContent = prod.toLocaleString();
+  $('#matrixFormula').innerHTML = `<span class="text-[var(--paper)]/70">${parts.join(' × ')}</span> = <span class="text-[var(--amber)]">${prod.toLocaleString()}</span> binaries to build, test, sign, host and keep in sync — for <i>one library</i>. At 40 MB each that is ${(prod*40/1024).toFixed(1)} GB of release storage before debug symbols.`;
+}
+$$('[data-sw]').forEach(sw=>{
+  const toggle=()=>{
+    const on = sw.getAttribute('aria-checked')==='true';
+    sw.setAttribute('aria-checked', String(!on));
+    active[sw.dataset.sw] = !on;
+    updateMatrix();
+  };
+  sw.addEventListener('click',toggle);
+  sw.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); toggle(); }});
+});
+$('#matrixReset').addEventListener('click',()=>{
+  $$('[data-sw]').forEach(s=>s.setAttribute('aria-checked','true'));
+  dims.forEach(d=>active[d.k]=true); updateMatrix();
+});
+updateMatrix();
+
+/* ================= 04 treemap ================= */
+const pkgs = [
+  {n:'torch', s:1.90, c:'#ff5a36', span:7, rows:3, d:'libtorch_cpu.so alone is ~1.4 GB of statically linked C++'},
+  {n:'nvidia-cudnn-cu12', s:0.70, c:'#00a389', span:5, rows:2},
+  {n:'nvidia-cublas-cu12', s:0.52, c:'#3b7bf6', span:5, rows:1},
+  {n:'triton', s:0.28, c:'#f5b942', span:4, rows:1},
+  {n:'nvidia-cusparse', s:0.22, c:'#e8567f', span:2, rows:1},
+  {n:'nvidia-cufft', s:0.21, c:'#8e7cf3', span:2, rows:1},
+  {n:'nvidia-nccl', s:0.20, c:'#2fb8c9', span:2, rows:1},
+  {n:'nvidia-cusolver', s:0.15, c:'#c98f14', span:2, rows:1},
+  {n:'curand · nvjitlink · nvtx', s:0.13, c:'#6b7684', span:6, rows:1},
+  {n:'sympy · networkx · numpy · jinja2 · filelock', s:0.09, c:'#9aa3ad', span:6, rows:1},
+];
+$('#treemap').innerHTML = pkgs.map(p=>`
+  <div class="tm" style="grid-column:span ${p.span};grid-row:span ${p.rows};background:${p.c};min-height:${p.rows>1?92:44}px">
+    <div class="f-mono text-[12px] font-semibold leading-tight">${p.n}</div>
+    <small class="f-mono">${p.s.toFixed(2)} GB${p.d?' · '+p.d:''}</small>
+  </div>`).join('');
+
+/* environments multiplier */
+const env = $('#envRange');
+const presets = [
+  ['1 laptop, 1 venv',1],
+  ['small team',40],
+  ['course of 120 students',130],
+  ['CI, uncached, 1 month',360],
+];
+$('#envPresets').innerHTML = presets.map(p=>`<button data-env="${p[1]}" class="border border-white/15 rounded px-2.5 py-1.5 hover:bg-white/10 hover:border-white/40 transition">${p[0]}</button>`).join('');
+function updEnv(){
+  const n = +env.value;
+  env.style.setProperty('--p', ((n-1)/499*100)+'%');
+  $('#envOut').textContent = n;
+  const gb = n*4.4;
+  $('#envGB').textContent = gb>=1000 ? (gb/1024).toFixed(2)+' TB' : Math.round(gb).toLocaleString();
+  $('#envTB').textContent = (gb/1024).toFixed(2);
+  const hours = gb/17; /* ~17 GB per hour of 4K */
+  $('#envEquiv').textContent = hours<1 ? `≈ ${Math.round(hours*60)} minutes of 4K video`
+    : hours<48 ? `≈ ${Math.round(hours)} hours of 4K video`
+    : `≈ ${Math.round(hours/24)} days of continuous 4K video`;
+}
+env.addEventListener('input',updEnv);
+$$('[data-env]').forEach(b=>b.addEventListener('click',()=>{ env.value=b.dataset.env; updEnv(); }));
+updEnv();
+
+/* ================= 05 causes ================= */
+const causes = [
+  {n:'01',c:'var(--verm)',t:'Monomorphisation',b:'Generics are compiled per concrete type. <span class="f-mono text-[13px]">Vec&lt;f32&gt;</span>, <span class="f-mono text-[13px]">Vec&lt;String&gt;</span> and <span class="f-mono text-[13px]">Vec&lt;Entity&gt;</span> are three separate machine-code bodies. C++ templates, Rust generics and CUDA kernels for nine GPU architectures are the same phenomenon — and it is the single largest producer of duplicate bytes in every ecosystem on this page.'},
+  {n:'02',c:'var(--teal)',t:'Debug information',b:'DWARF/PDB describes every type, scope, inlined frame and local in the program. It routinely outweighs the code by 5–20×. Turn <span class="f-mono text-[13px]">-g</span> off and a 40 MB object file becomes 900 KB — and becomes undebuggable.'},
+  {n:'03',c:'var(--blue)',t:'Static linking by default',b:'Both Rust and modern C++ increasingly ship one self-contained executable. That means every dependency\'s code is copied into your binary rather than resolved at load time from a shared library that already exists on the system.'},
+  {n:'04',c:'var(--amber)',t:'Incremental state',b:'Fast rebuilds require remembering intermediate results: MIR, query caches, fingerprints, dependency graphs. This is 30–40% of a Rust <span class="f-mono text-[13px]">target/</span> and the entire reason <span class="f-mono text-[13px]">ccache</span> exists in C++ — same idea, opt-in there, on by default here.'},
+  {n:'05',c:'var(--rose)',t:'Build-time programs',b:'Build scripts, procedural macros, CMake configure steps, code generators, shader compilers. These are <i>executables built in order to be run during the build</i> — a second, parallel compilation target that produces its own artifacts. Bevy has dozens.'},
+  {n:'06',c:'#8e7cf3',t:'The configuration matrix',b:'Every distinct combination of target, feature set, profile and dependency version is a separate compilation. Rust: features unify per workspace but change across projects. C++: Debug vs Release, /MD vs /MT, C++17 vs C++20 — none of them interchangeable. N configurations × M dependencies = the real multiplier.'},
+];
+$('#causes').innerHTML = causes.map(c=>`
+  <article class="card p-7 group" data-reveal>
+    <div class="flex items-center justify-between mb-5">
+      <span class="f-mono text-[11px] font-bold" style="color:${c.c}">${c.n}</span>
+      <span class="w-8 h-[3px] transition-all duration-500 group-hover:w-16" style="background:${c.c}"></span>
+    </div>
+    <h4 class="f-display text-2xl font-bold leading-tight mb-3">${c.t}</h4>
+    <p class="text-[14.5px] leading-relaxed text-[var(--ink)]/68">${c.b}</p>
+  </article>`).join('');
+
+const spectrum = [
+  {n:'C / C++ with system libs', v:6,  c:'var(--teal)', d:'ship thin binaries, lean on a prebuilt shared world'},
+  {n:'Python + PyTorch', v:22, c:'var(--rose)', d:'ship nothing; download an enormous prebuilt native world'},
+  {n:'Go', v:38, c:'var(--amber)', d:'static binaries, but a shared build cache and little template explosion'},
+  {n:'Rust / Bevy', v:88, c:'var(--verm)', d:'rebuild the world locally, keep every intermediate'},
+  {n:'C++ built from source (Chromium, UE)', v:100, c:'var(--blue)', d:'the same as Rust — you just rarely do it'},
+];
+$('#spectrum').innerHTML = spectrum.map(s=>`
+  <div>
+    <div class="flex justify-between items-baseline mb-1.5">
+      <span class="f-mono text-[12.5px] font-medium">${s.n}</span>
+      <span class="f-mono text-[12px] font-semibold" style="color:${s.c}">${s.v>=100?'100+ GB':s.v+' GB'}</span>
+    </div>
+    <div class="h-2.5 rounded-full bg-[var(--paper2)] overflow-hidden">
+      <div class="h-full rounded-full" style="width:${s.v}%;background:${s.c}"></div>
+    </div>
+    <div class="f-mono text-[11px] text-[var(--mute2)] mt-1.5">${s.d}</div>
+  </div>`).join('');
+
+/* ================= 06 levers ================= */
+const levers = [
+  {id:'debug', t:'profile.dev.debug = 0', d:'Drop DWARF from dev builds.', save:0.55, cost:'No line numbers or variable inspection in the debugger.', on:false},
+  {id:'incr', t:'profile.dev.incremental = false', d:'Stop keeping the rebuild database.', save:1.15, cost:'Every edit becomes a much larger recompile. Usually a bad trade.', on:false},
+  {id:'shared', t:'CARGO_TARGET_DIR=~/cargo-target', d:'Share one target dir across every project.', save:0.95, cost:'Cross-project lock contention; features that differ force rebuilds.', on:false},
+  {id:'feat', t:'bevy = { default-features = false, … }', d:'Compile only the subsystems you use.', save:0.30, cost:'You must know which features you need. Also cuts ~120 crates and build time.', on:true},
+  {id:'split', t:'split-debuginfo = "unpacked" + strip', d:'Keep debug info out of the archive, strip the binary.', save:0.10, cost:'Minor; mostly platform-dependent behaviour.', on:false},
+];
+const BASE = 3.40;
+$('#levers').innerHTML = levers.map(l=>`
+  <div class="flex items-start gap-4 p-4 rounded border border-white/10 hover:border-white/25 hover:bg-white/[.03] transition" data-lever="${l.id}">
+    <div class="sw" role="switch" tabindex="0" aria-checked="${l.on}" data-lsw="${l.id}" aria-label="${l.t}"></div>
+    <div class="min-w-0 flex-1">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <span class="f-mono text-[13px] text-[var(--paper)]">${l.t}</span>
+        <span class="f-mono text-[12px] font-semibold text-[var(--teal)] shrink-0">−${l.save.toFixed(2)} GB</span>
+      </div>
+      <p class="text-[13px] text-[var(--paper)]/50 mt-1">${l.d}</p>
+      <p class="f-mono text-[11px] mt-1.5" style="color:var(--amber)">tradeoff: ${l.cost}</p>
+    </div>
+  </div>`).join('');
+const state = Object.fromEntries(levers.map(l=>[l.id,l.on]));
+function updLevers(){
+  const saved = levers.filter(l=>state[l.id]).reduce((a,l)=>a+l.save,0);
+  const size = Math.max(0.18, BASE-saved);
+  $('#sizeOut').textContent = size.toFixed(2);
+  $('#keepBar').style.width = (size/BASE*100)+'%';
+  $('#savedOut').textContent = `${Math.min(saved,BASE-0.18).toFixed(2)} GB reclaimed`;
+  $('#pctOut').textContent = `${Math.round((1-size/BASE)*100)}% smaller`;
+}
+$$('[data-lsw]').forEach(sw=>{
+  const t=()=>{ const on=sw.getAttribute('aria-checked')==='true'; sw.setAttribute('aria-checked',String(!on)); state[sw.dataset.lsw]=!on; updLevers(); };
+  sw.addEventListener('click',t);
+  sw.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.preventDefault();t();} });
+});
+updLevers();
+
+const freeWins = [
+  ['cargo clean --release','deletes optimised artifacts you almost never re-run'],
+  ['cargo sweep / cargo-sweep -t 30','removes intermediates older than 30 days'],
+  ['sccache','shares compiled crates across projects and CI runs — the "binary distribution" trick, applied to your own cache'],
+  ['mold or lld as linker','cuts link time by 3–7× on large debug builds; smaller churn in incremental state'],
+  ['-Zbuild-std / no, actually: don\'t','rebuilding core and std from source adds ~400 MB and minutes. Leave it alone unless you need it'],
+  ['uv instead of pip','global content-addressed cache + hardlinks: 40 venvs with torch cost ~4.4 GB once, not 176 GB'],
+  ['conda pkgs dir / DOCKER_BUILDKIT cache','same principle — deduplicate identical bytes at the filesystem level'],
+];
+$('#freeWins').innerHTML = freeWins.map(f=>`
+  <li class="flex gap-3 items-start group">
+    <span class="text-[var(--amber)] f-mono text-[13px] shrink-0 transition-transform group-hover:translate-x-1">→</span>
+    <span><span class="f-mono text-[12.5px] text-[var(--paper)]">${f[0]}</span><span class="block text-[13px] text-[var(--paper)]/50 mt-0.5">${f[1]}</span></span>
+  </li>`).join('');
+
+observeAll();
+</script>
+</body>
+</html>

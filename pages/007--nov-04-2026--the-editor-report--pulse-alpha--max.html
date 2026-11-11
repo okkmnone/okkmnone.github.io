@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Growing Editor — VS Code × Zed, Measured | SIZE REPORT EP.01</title>
+<style>
+  :root { --cyan:#22d3ee; --mag:#e879f9; --lime:#a3e635; }
+  * { box-sizing:border-box; }
+  html, body {
+    margin:0; padding:0; height:100%; overflow:hidden;
+    background:#020617;
+    background-image: radial-gradient(1200px 800px at 20% -10%, rgba(34,211,238,.07), transparent 60%),
+                      radial-gradient(1000px 700px at 110% 110%, rgba(232,121,249,.06), transparent 60%);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Bahnschrift','Microsoft YaHei','PingFang SC',sans-serif;
+    user-select:none;
+  }
+  #stage-wrap { position:relative; line-height:0; }
+  canvas#stage {
+    width:min(100vw, 177.78vh); height:min(56.25vw, 100vh);
+    background:#060d1f; display:block;
+    box-shadow:0 0 90px rgba(34,211,238,.10), 0 0 220px rgba(232,121,249,.06);
+  }
+  #scan { position:absolute; inset:0; pointer-events:none; opacity:.05; z-index:3;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.5) 0 1px, transparent 1px 4px); mix-blend-mode:overlay; }
+  /* ------- player controls ------- */
+  #controls {
+    position:absolute; left:0; right:0; bottom:0; height:72px; z-index:5;
+    display:flex; align-items:center; gap:16px; padding:0 20px 10px;
+    background:linear-gradient(180deg, transparent, rgba(2,6,23,.88) 55%);
+    opacity:1; transition:opacity .35s, transform .35s; line-height:normal; transform:translateY(0);
+    pointer-events:auto;
+  }
+  #controls.hidden { opacity:0; transform:translateY(12px); pointer-events:none; }
+  #controls.pinned { opacity:1; transform:translateY(0); pointer-events:auto; }
+  body.capture #controls, body.capture #scan { display:none; }
+  .btn {
+    width:44px; height:44px; border-radius:12px; border:1px solid rgba(148,197,255,.25);
+    background:rgba(13,25,48,.8); color:#bfe9ff; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:all .2s; flex:0 0 auto;
+  }
+  .btn:hover { border-color:var(--cyan); color:#fff; box-shadow:0 0 18px rgba(34,211,238,.35); }
+  .btn svg { width:20px; height:20px; fill:currentColor; }
+  #timeLabel { color:#9fd8ef; font:600 13px/1 'Consolas',monospace; letter-spacing:.08em; min-width:118px; text-align:center;
+    background:rgba(13,25,48,.8); border:1px solid rgba(148,197,255,.18); height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; padding:0 10px;}
+  #seek { position:relative; flex:1 1 auto; height:44px; display:flex; align-items:center; cursor:pointer; }
+  #seekTrack { position:relative; width:100%; height:6px; border-radius:3px; background:rgba(148,197,255,.16); overflow:visible; }
+  #seekFill { position:absolute; left:0; top:0; bottom:0; width:0%; border-radius:3px;
+    background:linear-gradient(90deg,#22d3ee,#60a5fa,#e879f9); box-shadow:0 0 12px rgba(34,211,238,.5); }
+  #seekFill::after { content:""; position:absolute; right:-7px; top:50%; transform:translateY(-50%);
+    width:14px; height:14px; border-radius:50%; background:#eafcff; box-shadow:0 0 10px rgba(34,211,238,.9); }
+  .chap { position:absolute; top:50%; width:8px; height:8px; border-radius:50%; transform:translate(-50%,-50%);
+    background:#1e3a5f; border:1px solid rgba(159,216,239,.6); transition:all .2s; }
+  .chap:hover { background:var(--cyan); box-shadow:0 0 10px var(--cyan); }
+  #docTitle { color:#e6f6ff; font:700 14px/1.25 'Microsoft YaHei','Bahnschrift',sans-serif; letter-spacing:.04em; text-align:right; opacity:.85; flex:0 0 auto; max-width:340px;}
+  #docTitle small { display:block; color:#6ea8c9; font:600 9px/1.6 'Consolas',monospace; letter-spacing:.18em; }
+  @media (max-width:900px){ #docTitle { display:none; } }
+  body.theme-paper { background:#ddd7c8; background-image:radial-gradient(1200px 800px at 20% -10%, rgba(31,78,121,.10), transparent 60%); }
+  body.theme-terminal { background:#010401; }
+  body.theme-pop { background:#ffd98a; background-image:radial-gradient(1200px 800px at 20% -10%, rgba(255,182,39,.35), transparent 60%); }
+  body.theme-noir { background:#000; }
+  .combobox { position:relative; display:flex; align-items:center; height:44px; border-radius:12px; border:1px solid rgba(148,197,255,.25); background:rgba(13,25,48,.8); padding:0 10px 0 12px; gap:8px; flex:0 0 auto; z-index:10; }
+  .combobox select {
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    background:transparent; border:0; height:34px; padding:0 18px 0 0;
+    color:#eafcff; font:700 12px/1 'Bahnschrift','Microsoft YaHei',sans-serif; letter-spacing:.08em;
+    cursor:pointer;
+  }
+  .combobox select:focus { outline:none; }
+  .combobox::after { content:"▾"; color:#9fd8ef; font-size:10px; pointer-events:none; }
+  .combobox:hover { border-color:var(--cyan); box-shadow:0 0 14px rgba(34,211,238,.25); }
+  #controls { background:linear-gradient(180deg, transparent, rgba(2,6,23,.92) 55%); }
+  body.theme-paper #controls { background:linear-gradient(180deg, transparent, rgba(236,231,216,.92) 55%); }
+  body.theme-terminal #controls { background:linear-gradient(180deg, transparent, rgba(4,8,4,.95) 55%); }
+  body.theme-pop #controls { background:linear-gradient(180deg, transparent, rgba(255,217,138,.92) 55%); }
+  body.theme-noir #controls { background:linear-gradient(180deg, transparent, rgba(0,0,0,.95) 55%); }
+  body.theme-paper .combobox, body.theme-paper #timeLabel { background:rgba(247,243,233,.92); color:#1c1a17; border-color:rgba(28,26,23,.25); }
+  body.theme-paper .combobox select, body.theme-paper #timeLabel { color:#1c1a17; }
+  body.theme-paper .combobox::after { color:#57534a; }
+  body.theme-terminal .combobox, body.theme-terminal #timeLabel { background:rgba(6,16,6,.92); color:#57ff8a; border-color:rgba(51,255,102,.4); }
+  body.theme-terminal .combobox select, body.theme-terminal #timeLabel { color:#57ff8a; }
+  body.theme-terminal .combobox::after { color:#57ff8a; }
+  body.theme-pop .combobox, body.theme-pop #timeLabel { background:rgba(255,253,240,.95); color:#141414; border-color:rgba(20,20,20,.4); }
+  body.theme-pop .combobox select, body.theme-pop #timeLabel { color:#141414; }
+  body.theme-pop .combobox::after { color:#141414; }
+  body.theme-noir .combobox, body.theme-noir #timeLabel { background:rgba(16,16,16,.95); color:#f2f2f2; border-color:rgba(255,255,255,.25); }
+  body.theme-noir .combobox select, body.theme-noir #timeLabel { color:#f2f2f2; }
+  body.theme-noir .combobox::after { color:#f2f2f2; }
+  @media (max-width:1500px){ .combobox { padding:0 6px 0 8px; } }
+</style>
+</head>
+<body>
+<div id="stage-wrap">
+  <canvas id="stage" width="1920" height="1080"></canvas>
+  <div id="scan"></div>
+  <div id="controls">
+    <button class="btn" id="playBtn" aria-label="Play / pause">
+      <svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <div id="timeLabel">00:00 / 04:26</div>
+    <div id="seek"><div id="seekTrack"><div id="seekFill"></div></div></div>
+    <div class="combobox" role="group" aria-label="Theme">
+      <select id="themeSelect">
+        <option value="nova">NOVA</option>
+        <option value="paper">PAPER</option>
+        <option value="terminal">TERM</option>
+        <option value="pop">POP</option>
+        <option value="noir">NOIR</option>
+      </select>
+    </div>
+    <div class="combobox" role="group" aria-label="Language">
+      <select id="langSelect">
+        <option value="en">EN</option>
+        <option value="zh">简中</option>
+      </select>
+    </div>
+    <div id="docTitle"><span id="docTitleMain">The Growing Editor</span><small>THE GROWING EDITOR · SIZE REPORT EP.01</small></div>
+    <button class="btn" id="muteBtn" aria-label="Mute">
+      <svg viewBox="0 0 24 24" id="volIcon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+    </button>
+    <button class="btn" id="fsBtn" aria-label="Fullscreen">
+      <svg viewBox="0 0 24 24"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 4h-4v2h6v-6h-2v4z"/></svg>
+    </button>
+  </div>
+</div>
+<audio id="narr" preload="auto"></audio>
+<script>
+'use strict';
+/* ================= DATA (injected at build time) ================= */
+const DATA = {"summary":{"generated":"2026-11-04","vscode":{"count":132,"first":{"version":"1.14.0","date":"2017-06-01","mb":42.01,"bytes":42008224},"latest":{"version":"1.145.0","date":"2026-11-04","mb":256.32,"bytes":256316880},"growth_pct":510.2,"multiple":6.1,"cagr":21.2,"delta_mb":214.3},"zed":{"count":134,"first":{"version":"v0.208.4","date":"2025-10-15","mb":89.36,"bytes":89359376},"latest":{"version":"v1.26.2","date":"2026-10-28","mb":64.76,"bytes":64763544},"peak":{"version":"v0.220.6","date":"2026-01-25","mb":104.63,"bytes":104631848},"change_pct":-27.5,"drop":{"version":"v1.25.2","date":"2026-10-21","mb":64.21,"bytes":64212392},"drop_pct":-23.8},"compare":{"ratio":3.96,"diff_mb":191.6},"milestones":[{"threshold":50,"version":"1.32.0","date":"2019-02-01","mb":50.0},{"threshold":75,"version":"1.56.0","date":"2021-04-01","mb":80.04},{"threshold":100,"version":"1.90.0","date":"2024-05-01","mb":100.59},{"threshold":125,"version":"1.109.0","date":"2026-01-01","mb":125.91},{"threshold":150,"version":"1.116.0","date":"2026-04-15","mb":158.2},{"threshold":200,"version":"1.126.0","date":"2026-06-24","mb":201.27},{"threshold":250,"version":"1.130.0","date":"2026-07-22","mb":251.9}],"yearly":[{"year":"2017","avg":44.2,"max":46.8,"n":6},{"year":"2018","avg":45.7,"max":47.1,"n":11},{"year":"2019","avg":52.5,"max":59.5,"n":11},{"year":"2020","avg":60.2,"max":64.1,"n":11},{"year":"2021","avg":78.1,"max":83.2,"n":11},{"year":"2022","avg":83.1,"max":93.1,"n":11},{"year":"2023","avg":93.0,"max":94.8,"n":11},{"year":"2024","avg":100.6,"max":104.9,"n":11},{"year":"2025","avg":113.5,"max":124.4,"n":12},{"year":"2026","avg":198.1,"max":256.3,"n":37}],"top_jumps":[{"from":"1.129.0","to":"1.130.0","delta":36.1,"toMb":251.9},{"from":"1.115.0","to":"1.116.0","delta":16.8,"toMb":158.2},{"from":"1.139.0","to":"1.140.0","delta":11.5,"toMb":244.37},{"from":"1.120.0","to":"1.121.0","delta":10.2,"toMb":167.34},{"from":"1.121.0","to":"1.122.0","delta":9.8,"toMb":177.19},{"from":"1.135.0","to":"1.136.0","delta":9.1,"toMb":240.77}]},"vscode":[{"version":"1.14.0","date":"2017-06-01","mb":42.01,"bytes":42008224},{"version":"1.15.0","date":"2017-07-01","mb":42.54,"bytes":42539384},{"version":"1.16.0","date":"2017-08-01","mb":46.44,"bytes":46440720},{"version":"1.17.0","date":"2017-09-01","mb":42.82,"bytes":42819616},{"version":"1.18.0","date":"2017-10-01","mb":44.85,"bytes":44852728},{"version":"1.19.0","date":"2017-11-01","mb":46.79,"bytes":46791608},{"version":"1.20.0","date":"2018-01-01","mb":45.95,"bytes":45950496},{"version":"1.21.0","date":"2018-02-01","mb":44.97,"bytes":44971976},{"version":"1.22.0","date":"2018-03-01","mb":45.43,"bytes":45432792},{"version":"1.23.0","date":"2018-04-01","mb":45.4,"bytes":45398896},{"version":"1.24.0","date":"2018-05-01","mb":46.4,"bytes":46397872},{"version":"1.25.0","date":"2018-06-01","mb":47.08,"bytes":47081704},{"version":"1.26.0","date":"2018-07-01","mb":46.66,"bytes":46655768},{"version":"1.27.0","date":"2018-08-01","mb":45.19,"bytes":45188568},{"version":"1.28.0","date":"2018-09-01","mb":44.07,"bytes":44066904},{"version":"1.29.0","date":"2018-10-01","mb":45.66,"bytes":45657248},{"version":"1.30.0","date":"2018-11-01","mb":45.94,"bytes":45942632},{"version":"1.31.0","date":"2019-01-01","mb":48.94,"bytes":48939336},{"version":"1.32.0","date":"2019-02-01","mb":50.0,"bytes":50000360},{"version":"1.33.0","date":"2019-03-01","mb":50.16,"bytes":50159320},{"version":"1.34.0","date":"2019-04-01","mb":50.18,"bytes":50176400},{"version":"1.35.0","date":"2019-05-01","mb":50.27,"bytes":50265968},{"version":"1.36.0","date":"2019-06-01","mb":52.92,"bytes":52918080},{"version":"1.37.0","date":"2019-07-01","mb":53.08,"bytes":53084600},{"version":"1.38.0","date":"2019-08-01","mb":53.47,"bytes":53471144},{"version":"1.39.0","date":"2019-09-01","mb":53.13,"bytes":53132224},{"version":"1.40.0","date":"2019-10-01","mb":55.89,"bytes":55888512},{"version":"1.41.0","date":"2019-11-01","mb":59.55,"bytes":59551248},{"version":"1.42.0","date":"2020-01-01","mb":59.66,"bytes":59659392},{"version":"1.43.0","date":"2020-02-01","mb":58.89,"bytes":58894272},{"version":"1.44.0","date":"2020-03-01","mb":59.09,"bytes":59088600},{"version":"1.45.0","date":"2020-04-01","mb":56.57,"bytes":56572504},{"version":"1.46.0","date":"2020-05-01","mb":57.42,"bytes":57422848},{"version":"1.47.0","date":"2020-06-01","mb":57.54,"bytes":57537264},{"version":"1.48.0","date":"2020-07-01","mb":58.68,"bytes":58679416},{"version":"1.49.0","date":"2020-08-01","mb":64.05,"bytes":64047256},{"version":"1.50.0","date":"2020-09-01","mb":64.07,"bytes":64067232},{"version":"1.51.0","date":"2020-10-01","mb":62.89,"bytes":62887288},{"version":"1.52.0","date":"2020-11-01","mb":63.42,"bytes":63420640},{"version":"1.53.0","date":"2021-01-01","mb":70.48,"bytes":70479616},{"version":"1.54.0","date":"2021-02-01","mb":73.17,"bytes":73167056},{"version":"1.55.0","date":"2021-03-01","mb":72.22,"bytes":72221552},{"version":"1.56.0","date":"2021-04-01","mb":80.04,"bytes":80041848},{"version":"1.57.0","date":"2021-05-01","mb":79.91,"bytes":79913592},{"version":"1.58.0","date":"2021-06-01","mb":80.53,"bytes":80525864},{"version":"1.59.0","date":"2021-07-01","mb":83.23,"bytes":83230752},{"version":"1.60.0","date":"2021-08-01","mb":79.56,"bytes":79559336},{"version":"1.61.0","date":"2021-09-01","mb":79.61,"bytes":79608616},{"version":"1.62.0","date":"2021-10-01","mb":80.0,"bytes":80003192},{"version":"1.63.0","date":"2021-11-01","mb":79.89,"bytes":79893480},{"version":"1.64.0","date":"2022-01-01","mb":77.27,"bytes":77274280},{"version":"1.65.0","date":"2022-02-01","mb":75.74,"bytes":75741616},{"version":"1.66.0","date":"2022-03-01","mb":79.47,"bytes":79474064},{"version":"1.67.0","date":"2022-04-01","mb":79.55,"bytes":79546040},{"version":"1.68.0","date":"2022-05-01","mb":81.33,"bytes":81330576},{"version":"1.69.0","date":"2022-06-01","mb":83.17,"bytes":83168440},{"version":"1.70.0","date":"2022-07-01","mb":82.86,"bytes":82859704},{"version":"1.71.0","date":"2022-08-01","mb":83.08,"bytes":83083432},{"version":"1.72.0","date":"2022-09-01","mb":86.03,"bytes":86029136},{"version":"1.73.0","date":"2022-10-01","mb":92.59,"bytes":92588112},{"version":"1.74.0","date":"2022-11-01","mb":93.08,"bytes":93079336},{"version":"1.75.0","date":"2023-01-01","mb":93.14,"bytes":93137720},{"version":"1.76.0","date":"2023-02-01","mb":90.14,"bytes":90137152},{"version":"1.77.0","date":"2023-03-01","mb":89.04,"bytes":89036984},{"version":"1.78.0","date":"2023-04-01","mb":92.73,"bytes":92729176},{"version":"1.79.0","date":"2023-05-01","mb":93.01,"bytes":93011880},{"version":"1.80.0","date":"2023-06-01","mb":93.17,"bytes":93171520},{"version":"1.81.0","date":"2023-07-01","mb":93.33,"bytes":93334080},{"version":"1.82.0","date":"2023-08-01","mb":94.34,"bytes":94337992},{"version":"1.83.0","date":"2023-09-01","mb":94.58,"bytes":94576784},{"version":"1.84.0","date":"2023-10-01","mb":94.62,"bytes":94623056},{"version":"1.85.0","date":"2023-11-01","mb":94.76,"bytes":94757320},{"version":"1.86.0","date":"2024-01-01","mb":98.96,"bytes":98964712},{"version":"1.87.0","date":"2024-02-01","mb":98.15,"bytes":98145936},{"version":"1.88.0","date":"2024-03-01","mb":99.46,"bytes":99455168},{"version":"1.89.0","date":"2024-04-01","mb":99.62,"bytes":99623704},{"version":"1.90.0","date":"2024-05-01","mb":100.59,"bytes":100587320},{"version":"1.91.0","date":"2024-06-01","mb":99.51,"bytes":99514496},{"version":"1.92.0","date":"2024-07-01","mb":100.33,"bytes":100328600},{"version":"1.93.0","date":"2024-08-01","mb":101.25,"bytes":101249496},{"version":"1.94.0","date":"2024-09-01","mb":100.46,"bytes":100464424},{"version":"1.95.0","date":"2024-10-01","mb":103.39,"bytes":103391088},{"version":"1.96.0","date":"2024-11-01","mb":104.93,"bytes":104933960},{"version":"1.97.0","date":"2025-01-01","mb":105.65,"bytes":105647448},{"version":"1.98.0","date":"2025-02-01","mb":107.55,"bytes":107546368},{"version":"1.99.0","date":"2025-03-01","mb":107.54,"bytes":107536208},{"version":"1.100.0","date":"2025-04-01","mb":108.25,"bytes":108249408},{"version":"1.101.0","date":"2025-05-01","mb":111.31,"bytes":111310680},{"version":"1.102.0","date":"2025-06-01","mb":111.48,"bytes":111484232},{"version":"1.103.0","date":"2025-07-01","mb":114.87,"bytes":114866344},{"version":"1.104.0","date":"2025-08-01","mb":115.01,"bytes":115008008},{"version":"1.105.0","date":"2025-09-01","mb":115.45,"bytes":115453664},{"version":"1.106.0","date":"2025-10-01","mb":115.84,"bytes":115839584},{"version":"1.107.0","date":"2025-11-01","mb":124.33,"bytes":124332568},{"version":"1.108.0","date":"2025-12-01","mb":124.38,"bytes":124380128},{"version":"1.109.0","date":"2026-01-01","mb":125.91,"bytes":125914472},{"version":"1.110.0","date":"2026-03-04","mb":131.39,"bytes":131391624},{"version":"1.111.0","date":"2026-03-09","mb":131.48,"bytes":131480936},{"version":"1.112.0","date":"2026-03-18","mb":131.71,"bytes":131713664},{"version":"1.113.0","date":"2026-03-25","mb":139.61,"bytes":139610248},{"version":"1.114.0","date":"2026-04-01","mb":141.11,"bytes":141105048},{"version":"1.115.0","date":"2026-04-08","mb":141.43,"bytes":141433808},{"version":"1.116.0","date":"2026-04-15","mb":158.2,"bytes":158197688},{"version":"1.117.0","date":"2026-04-22","mb":158.21,"bytes":158208776},{"version":"1.118.0","date":"2026-04-29","mb":156.88,"bytes":156877568},{"version":"1.119.0","date":"2026-05-06","mb":157.13,"bytes":157125576},{"version":"1.120.0","date":"2026-05-13","mb":157.18,"bytes":157176160},{"version":"1.121.0","date":"2026-05-20","mb":167.34,"bytes":167343840},{"version":"1.122.0","date":"2026-05-28","mb":177.19,"bytes":177189960},{"version":"1.123.0","date":"2026-06-03","mb":183.43,"bytes":183428760},{"version":"1.124.0","date":"2026-06-10","mb":184.95,"bytes":184948840},{"version":"1.125.0","date":"2026-06-17","mb":192.44,"bytes":192437784},{"version":"1.126.0","date":"2026-06-24","mb":201.27,"bytes":201266744},{"version":"1.127.0","date":"2026-07-01","mb":203.58,"bytes":203581904},{"version":"1.128.0","date":"2026-07-08","mb":209.19,"bytes":209190064},{"version":"1.129.0","date":"2026-07-15","mb":215.76,"bytes":215757304},{"version":"1.130.0","date":"2026-07-22","mb":251.9,"bytes":251901888},{"version":"1.131.0","date":"2026-07-29","mb":232.35,"bytes":232347688},{"version":"1.132.0","date":"2026-08-05","mb":237.8,"bytes":237798584},{"version":"1.133.0","date":"2026-08-12","mb":236.67,"bytes":236665016},{"version":"1.134.0","date":"2026-08-19","mb":231.47,"bytes":231465208},{"version":"1.135.0","date":"2026-08-26","mb":231.67,"bytes":231674816},{"version":"1.136.0","date":"2026-09-02","mb":240.77,"bytes":240773728},{"version":"1.137.0","date":"2026-09-09","mb":235.07,"bytes":235072728},{"version":"1.138.0","date":"2026-09-16","mb":236.05,"bytes":236054120},{"version":"1.139.0","date":"2026-09-23","mb":232.9,"bytes":232904568},{"version":"1.140.0","date":"2026-09-30","mb":244.37,"bytes":244372864},{"version":"1.141.0","date":"2026-10-07","mb":251.83,"bytes":251827616},{"version":"1.142.0","date":"2026-10-14","mb":243.02,"bytes":243024128},{"version":"1.143.0","date":"2026-10-21","mb":248.78,"bytes":248775480},{"version":"1.144.0","date":"2026-10-28","mb":251.59,"bytes":251589632},{"version":"1.145.0","date":"2026-11-04","mb":256.32,"bytes":256316880}],"zed":[{"version":"v0.208.4","date":"2025-10-15","mb":89.36,"bytes":89359376},{"version":"v0.208.5","date":"2025-10-16","mb":89.44,"bytes":89442640},{"version":"v0.208.6","date":"2025-10-20","mb":89.44,"bytes":89437952},{"version":"v0.209.5","date":"2025-10-22","mb":89.71,"bytes":89708904},{"version":"v0.209.4","date":"2025-10-22","mb":89.69,"bytes":89692192},{"version":"v0.209.6","date":"2025-10-24","mb":89.69,"bytes":89690464},{"version":"v0.209.7","date":"2025-10-28","mb":89.71,"bytes":89714776},{"version":"v0.210.4","date":"2025-10-29","mb":89.45,"bytes":89453296},{"version":"v0.211.4","date":"2025-11-05","mb":90.45,"bytes":90447480},{"version":"v0.211.6","date":"2025-11-06","mb":90.59,"bytes":90586848},{"version":"v0.211.5","date":"2025-11-06","mb":90.58,"bytes":90581760},{"version":"v0.212.3","date":"2025-11-12","mb":90.98,"bytes":90980040},{"version":"v0.212.5","date":"2025-11-13","mb":90.99,"bytes":90994688},{"version":"v0.212.4","date":"2025-11-13","mb":91.01,"bytes":91009696},{"version":"v0.212.6","date":"2025-11-15","mb":90.99,"bytes":90991504},{"version":"v0.212.7","date":"2025-11-18","mb":90.98,"bytes":90981672},{"version":"v0.213.3","date":"2025-11-19","mb":91.02,"bytes":91016624},{"version":"v0.213.4","date":"2025-11-23","mb":91.02,"bytes":91022472},{"version":"v0.213.7","date":"2025-11-24","mb":91.05,"bytes":91053672},{"version":"v0.213.6","date":"2025-11-24","mb":91.02,"bytes":91018776},{"version":"v0.213.8","date":"2025-11-25","mb":91.05,"bytes":91047088},{"version":"v0.214.5","date":"2025-11-26","mb":91.86,"bytes":91859152},{"version":"v0.214.6","date":"2025-11-27","mb":91.79,"bytes":91794352},{"version":"v0.214.7","date":"2025-11-29","mb":91.81,"bytes":91814520},{"version":"v0.215.3","date":"2025-12-03","mb":95.63,"bytes":95632112},{"version":"v0.216.0","date":"2025-12-10","mb":96.65,"bytes":96650176},{"version":"v0.216.1","date":"2025-12-11","mb":96.64,"bytes":96643784},{"version":"v0.217.1","date":"2025-12-16","mb":95.92,"bytes":95924592},{"version":"v0.217.2","date":"2025-12-17","mb":95.93,"bytes":95927848},{"version":"v0.217.3","date":"2025-12-18","mb":95.93,"bytes":95933136},{"version":"v0.217.4","date":"2026-01-05","mb":95.89,"bytes":95892944},{"version":"v0.218.5","date":"2026-01-07","mb":97.97,"bytes":97966456},{"version":"v0.218.6","date":"2026-01-08","mb":98.0,"bytes":97998720},{"version":"v0.218.7","date":"2026-01-12","mb":97.97,"bytes":97966184},{"version":"v0.219.4","date":"2026-01-14","mb":101.24,"bytes":101241120},{"version":"v0.219.5","date":"2026-01-20","mb":101.27,"bytes":101273728},{"version":"v0.220.2","date":"2026-01-21","mb":104.59,"bytes":104588376},{"version":"v0.220.3","date":"2026-01-22","mb":104.6,"bytes":104600888},{"version":"v0.220.5","date":"2026-01-24","mb":104.6,"bytes":104596160},{"version":"v0.220.6","date":"2026-01-25","mb":104.63,"bytes":104631848},{"version":"v0.220.7","date":"2026-01-27","mb":104.62,"bytes":104616024},{"version":"v0.221.4","date":"2026-01-28","mb":85.06,"bytes":85059712},{"version":"v0.221.5","date":"2026-01-29","mb":85.04,"bytes":85036504},{"version":"v0.222.2","date":"2026-02-04","mb":85.15,"bytes":85145184},{"version":"v0.222.3","date":"2026-02-05","mb":85.16,"bytes":85158512},{"version":"v0.222.4","date":"2026-02-06","mb":85.14,"bytes":85144632},{"version":"v0.223.3","date":"2026-02-11","mb":82.65,"bytes":82654064},{"version":"v0.223.5","date":"2026-02-17","mb":82.65,"bytes":82646032},{"version":"v0.223.4","date":"2026-02-17","mb":82.68,"bytes":82684208},{"version":"v0.224.5","date":"2026-02-18","mb":83.48,"bytes":83479776},{"version":"v0.224.4","date":"2026-02-18","mb":83.46,"bytes":83459272},{"version":"v0.224.7","date":"2026-02-19","mb":83.43,"bytes":83430224},{"version":"v0.224.6","date":"2026-02-19","mb":83.45,"bytes":83450464},{"version":"v0.224.10","date":"2026-02-20","mb":83.45,"bytes":83447072},{"version":"v0.224.9","date":"2026-02-20","mb":83.45,"bytes":83448880},{"version":"v0.224.8","date":"2026-02-20","mb":83.45,"bytes":83453288},{"version":"v0.224.11","date":"2026-02-21","mb":83.44,"bytes":83440000},{"version":"v0.225.9","date":"2026-02-25","mb":84.18,"bytes":84175296},{"version":"v0.225.10","date":"2026-02-27","mb":84.23,"bytes":84227288},{"version":"v0.225.12","date":"2026-03-03","mb":84.22,"bytes":84216600},{"version":"v0.226.4","date":"2026-03-04","mb":84.26,"bytes":84256744},{"version":"v0.225.13","date":"2026-03-04","mb":84.24,"bytes":84235352},{"version":"v0.226.5","date":"2026-03-06","mb":84.21,"bytes":84209264},{"version":"v0.227.1","date":"2026-03-11","mb":84.57,"bytes":84572824},{"version":"v0.228.0","date":"2026-03-18","mb":84.43,"bytes":84429280},{"version":"v0.229.0","date":"2026-03-25","mb":80.13,"bytes":80131688},{"version":"v0.230.0","date":"2026-04-01","mb":80.47,"bytes":80474424},{"version":"v0.230.1","date":"2026-04-03","mb":80.48,"bytes":80476368},{"version":"v0.230.2","date":"2026-04-06","mb":80.47,"bytes":80467128},{"version":"v0.231.1","date":"2026-04-08","mb":80.09,"bytes":80086752},{"version":"v0.231.2","date":"2026-04-10","mb":80.1,"bytes":80098656},{"version":"v0.232.2","date":"2026-04-15","mb":81.76,"bytes":81758240},{"version":"v0.232.3","date":"2026-04-20","mb":81.78,"bytes":81775488},{"version":"v0.233.5","date":"2026-04-22","mb":82.07,"bytes":82074608},{"version":"v0.233.8","date":"2026-04-23","mb":82.09,"bytes":82093872},{"version":"v0.233.7","date":"2026-04-23","mb":82.09,"bytes":82085816},{"version":"v0.233.6","date":"2026-04-23","mb":82.09,"bytes":82091528},{"version":"v0.233.10","date":"2026-04-24","mb":80.21,"bytes":80205688},{"version":"v0.233.9","date":"2026-04-24","mb":82.09,"bytes":82093312},{"version":"v1.0.0","date":"2026-04-29","mb":80.59,"bytes":80590112},{"version":"v1.0.1","date":"2026-05-04","mb":80.59,"bytes":80590584},{"version":"v1.1.6","date":"2026-05-06","mb":81.58,"bytes":81578904},{"version":"v1.1.5","date":"2026-05-06","mb":81.6,"bytes":81600736},{"version":"v1.1.7","date":"2026-05-08","mb":81.59,"bytes":81587216},{"version":"v1.1.8","date":"2026-05-12","mb":81.61,"bytes":81614808},{"version":"v1.2.3","date":"2026-05-13","mb":81.61,"bytes":81605632},{"version":"v1.2.6","date":"2026-05-15","mb":81.73,"bytes":81726688},{"version":"v1.2.5","date":"2026-05-15","mb":81.74,"bytes":81738240},{"version":"v1.2.4","date":"2026-05-15","mb":81.74,"bytes":81739968},{"version":"v1.2.7","date":"2026-05-19","mb":81.73,"bytes":81728072},{"version":"v1.3.5","date":"2026-05-20","mb":82.39,"bytes":82393272},{"version":"v1.3.6","date":"2026-05-21","mb":82.42,"bytes":82415360},{"version":"v1.3.7","date":"2026-05-25","mb":82.4,"bytes":82399736},{"version":"v1.4.2","date":"2026-05-27","mb":82.79,"bytes":82786016},{"version":"v1.4.4","date":"2026-05-28","mb":82.78,"bytes":82779544},{"version":"v1.4.3","date":"2026-05-28","mb":82.78,"bytes":82776768},{"version":"v1.5.3","date":"2026-06-03","mb":85.45,"bytes":85452640},{"version":"v1.5.4","date":"2026-06-06","mb":85.45,"bytes":85448456},{"version":"v1.5.5","date":"2026-06-09","mb":85.47,"bytes":85473864},{"version":"v1.6.3","date":"2026-06-10","mb":85.7,"bytes":85699808},{"version":"v1.7.2","date":"2026-06-17","mb":84.73,"bytes":84732984},{"version":"v1.8.2","date":"2026-06-24","mb":85.32,"bytes":85316072},{"version":"v1.9.0","date":"2026-07-01","mb":87.07,"bytes":87073152},{"version":"v1.10.0","date":"2026-07-08","mb":87.46,"bytes":87463424},{"version":"v1.10.1","date":"2026-07-09","mb":87.46,"bytes":87457432},{"version":"v1.10.2","date":"2026-07-10","mb":87.5,"bytes":87498032},{"version":"v1.10.3","date":"2026-07-13","mb":87.49,"bytes":87486568},{"version":"v1.11.3","date":"2026-07-15","mb":88.04,"bytes":88043408},{"version":"v1.12.0","date":"2026-07-23","mb":90.98,"bytes":90978576},{"version":"v1.12.1","date":"2026-07-27","mb":90.94,"bytes":90936432},{"version":"v1.13.1","date":"2026-07-29","mb":91.23,"bytes":91233960},{"version":"v1.13.2","date":"2026-08-02","mb":91.2,"bytes":91201584},{"version":"v1.14.2","date":"2026-08-05","mb":91.89,"bytes":91891952},{"version":"v1.15.0","date":"2026-08-12","mb":92.38,"bytes":92382528},{"version":"v1.15.1","date":"2026-08-18","mb":92.42,"bytes":92422416},{"version":"v1.16.1","date":"2026-08-19","mb":92.12,"bytes":92119648},{"version":"v1.16.2","date":"2026-08-24","mb":92.15,"bytes":92150608},{"version":"v1.17.2","date":"2026-08-26","mb":93.46,"bytes":93455824},{"version":"v1.16.3","date":"2026-08-26","mb":92.17,"bytes":92170832},{"version":"v1.18.0","date":"2026-09-02","mb":95.13,"bytes":95133704},{"version":"v1.18.1","date":"2026-09-04","mb":95.13,"bytes":95134416},{"version":"v1.19.2","date":"2026-09-09","mb":90.22,"bytes":90216176},{"version":"v1.20.1","date":"2026-09-16","mb":85.57,"bytes":85574904},{"version":"v1.20.2","date":"2026-09-17","mb":85.63,"bytes":85627488},{"version":"v1.21.0","date":"2026-09-23","mb":86.09,"bytes":86090416},{"version":"v1.22.0","date":"2026-09-30","mb":84.01,"bytes":84005568},{"version":"v1.23.2","date":"2026-10-07","mb":84.1,"bytes":84097400},{"version":"v1.23.3","date":"2026-10-12","mb":84.1,"bytes":84101272},{"version":"v1.24.2","date":"2026-10-14","mb":84.24,"bytes":84235440},{"version":"v1.24.3","date":"2026-10-19","mb":84.18,"bytes":84182688},{"version":"v1.24.4","date":"2026-10-20","mb":84.22,"bytes":84222712},{"version":"v1.25.2","date":"2026-10-21","mb":64.21,"bytes":64212392},{"version":"v1.25.3","date":"2026-10-23","mb":64.17,"bytes":64172384},{"version":"v1.26.2","date":"2026-10-28","mb":64.76,"bytes":64763544}]};
+const TIMELINE = {"total":266,"head":1.0,"scenes":[{"id":"intro","t0":0,"t1":20,"audioAt":1.0},{"id":"method","t0":20,"t1":61,"audioAt":21.0},{"id":"timeline","t0":61,"t1":101,"audioAt":62.0},{"id":"spike","t0":101,"t1":141,"audioAt":102.0},{"id":"zed","t0":141,"t1":176,"audioAt":142.0},{"id":"why","t0":176,"t1":211,"audioAt":177.0},{"id":"board","t0":211,"t1":241,"audioAt":212.0},{"id":"outro","t0":241,"t1":266,"audioAt":242.0}]};
+const TOTAL = TIMELINE.total;            // 302 s
+const SCENES = TIMELINE.scenes;          // [{id,t0,t1,audioAt}]
+</script>
+<script>
+/* ================= THEMES (5 looks, switchable like language) ================= */
+const THEMES = {
+  nova: {
+    label:'NOVA', bgStyle:'hud', cardStyle:'hud',
+    fonts:{ display:"'Bahnschrift','Microsoft YaHei',sans-serif", mono:"'Consolas','Microsoft YaHei',monospace" },
+    bgTop:'#060d1f', bgMid:'#081226', bgBot:'#050a18',
+    glowA:'rgba(34,211,238,.14)', glowB:'rgba(232,121,249,.12)', glowC:'rgba(59,130,246,.10)',
+    gridLine:'rgba(125,180,255,.05)', vignette:.45, grain:0, scan:.05,
+    particleRGB:'165,225,255', particleMaxA:.30, gridRGB:'148,197,255', dimRGB:'159,216,239', panelRGB:'9,18,38', inkRGB:'230,246,255',
+    ink:'#e6f6ff', inkDim:'#7ea9c4', inkFaint:'rgba(159,216,239,.55)', hiInk:'#f2faff', chipBg:'#1e3a5f',
+    a1:'#22d3ee', a2:'#e879f9', a3:'#fbbf24', a4:'#a3e635', blue:'#60a5fa', orange:'#f97316', hot:'#ef4444',
+    a1Lt:'#7ee7ff', a2Lt:'#f5b8ff', a3Lt:'#fde68a', a4Lt:'#c9f97a', blueLt:'#93c5fd', hotLt:'#ffb3b3', a4Dk:'#65a30d',
+    cardFill:'rgba(13,25,48,.78)', cardEdge:'rgba(125,211,252,.16)',
+    line1:'#22d3ee', line2:'#60a5fa', line3:'#fbbf24', line4:'#ef4444',
+    areaTop:'rgba(34,211,238,.32)', areaMid:'rgba(96,165,250,.08)', areaBot:'rgba(96,165,250,0)', barCool:'rgba(96,165,250,.55)',
+    progressTrack:'rgba(125,211,252,.12)', footer:'rgba(126,169,196,.6)', chromeTag:'rgba(230,246,255,.55)',
+    ghost:'rgba(230,246,255,.035)', thanksColor:'#f2faff', thanksGlow:'rgba(96,165,250,.5)'
+  },
+  paper: {
+    label:'PAPER', bgStyle:'print', cardStyle:'print',
+    fonts:{ display:"Georgia,'Times New Roman','Microsoft YaHei',serif", mono:"Georgia,'Times New Roman','Microsoft YaHei',serif" },
+    bgTop:'#f7f3e9', bgMid:'#f3efe3', bgBot:'#ece7d8',
+    glowA:'rgba(31,78,121,.12)', glowB:'rgba(192,57,43,.10)', glowC:'rgba(31,78,121,.07)',
+    gridLine:'rgba(31,78,121,.07)', vignette:.10, grain:0, scan:0,
+    particleRGB:'31,78,121', particleMaxA:0, gridRGB:'28,26,23', dimRGB:'87,83,74', panelRGB:'28,26,23', inkRGB:'28,26,23',
+    ink:'#1c1a17', inkDim:'#57534a', inkFaint:'rgba(87,83,74,.65)', hiInk:'#000000', chipBg:'#e3ded0',
+    a1:'#1f4e79', a2:'#c0392b', a3:'#a67c00', a4:'#2e6e4e', blue:'#1f4e79', orange:'#c25e00', hot:'#c0392b',
+    a1Lt:'#1f4e79', a2Lt:'#c0392b', a3Lt:'#a67c00', a4Lt:'#2e6e4e', blueLt:'#3d6ea5', hotLt:'#c0392b', a4Dk:'#1c4a33',
+    cardFill:'#fffdf6', cardEdge:'#1c1a17',
+    line1:'#1f4e79', line2:'#3d6ea5', line3:'#c0392b', line4:'#8f1d12',
+    areaTop:'rgba(31,78,121,.25)', areaMid:'rgba(31,78,121,.07)', areaBot:'rgba(31,78,121,0)', barCool:'rgba(31,78,121,.32)',
+    progressTrack:'rgba(28,26,23,.18)', footer:'rgba(87,83,74,.8)', chromeTag:'#1c1a17',
+    ghost:'rgba(28,26,23,.07)', thanksColor:'#1c1a17', thanksGlow:'rgba(28,26,23,.25)'
+  },
+  terminal: {
+    label:'TERMINAL', bgStyle:'term', cardStyle:'term',
+    fonts:{ display:"'Consolas','Microsoft YaHei',monospace", mono:"'Consolas','Microsoft YaHei',monospace" },
+    bgTop:'#0a120a', bgMid:'#070d07', bgBot:'#040804',
+    glowA:'rgba(51,255,102,.12)', glowB:'rgba(255,176,0,.07)', glowC:'rgba(51,255,102,.06)',
+    gridLine:'rgba(51,255,102,.06)', vignette:.55, grain:.03, scan:.12,
+    particleRGB:'51,255,102', particleMaxA:.45, gridRGB:'51,255,102', dimRGB:'87,255,138', panelRGB:'3,12,4', inkRGB:'87,255,138',
+    ink:'#57ff8a', inkDim:'#2f9e4f', inkFaint:'rgba(87,255,138,.45)', hiInk:'#b9ffd0', chipBg:'#0d2412',
+    a1:'#33ff66', a2:'#ffb000', a3:'#ffb000', a4:'#ffb000', blue:'#33ff66', orange:'#ffd166', hot:'#ff5f5f',
+    a1Lt:'#8fffb0', a2Lt:'#ffd166', a3Lt:'#ffd166', a4Lt:'#ffd166', blueLt:'#8fffb0', hotLt:'#ff9d9d', a4Dk:'#8a5a00',
+    cardFill:'#061006', cardEdge:'#33ff66',
+    line1:'#33ff66', line2:'#8fffb0', line3:'#ffb000', line4:'#ff5f5f',
+    areaTop:'rgba(51,255,102,.26)', areaMid:'rgba(51,255,102,.08)', areaBot:'rgba(51,255,102,0)', barCool:'rgba(51,255,102,.30)',
+    progressTrack:'rgba(51,255,102,.18)', footer:'rgba(87,255,138,.45)', chromeTag:'#57ff8a',
+    ghost:'rgba(87,255,138,.05)', thanksColor:'#b9ffd0', thanksGlow:'rgba(51,255,102,.5)'
+  },
+  pop: {
+    label:'POP ART', bgStyle:'pop', cardStyle:'pop',
+    fonts:{ display:"'Arial Black','Microsoft YaHei',sans-serif", mono:"'Consolas','Microsoft YaHei',monospace" },
+    bgTop:'#fff3d6', bgMid:'#ffe9b8', bgBot:'#ffd98a',
+    glowA:'rgba(255,182,39,.45)', glowB:'rgba(230,57,70,.16)', glowC:'rgba(29,111,209,.12)',
+    gridLine:'rgba(20,20,20,.10)', vignette:0, grain:0, scan:0,
+    particleRGB:'20,20,20', particleMaxA:0, gridRGB:'20,20,20', dimRGB:'74,66,52', panelRGB:'20,20,20', inkRGB:'20,20,20',
+    ink:'#141414', inkDim:'#4a4234', inkFaint:'rgba(20,20,20,.5)', hiInk:'#000000', chipBg:'#141414',
+    a1:'#1d6fd1', a2:'#e63946', a3:'#e07a00', a4:'#2a9d8f', blue:'#1d6fd1', orange:'#e63946', hot:'#e63946',
+    a1Lt:'#1d6fd1', a2Lt:'#e63946', a3Lt:'#e07a00', a4Lt:'#1e6f5c', blueLt:'#2a9d8f', hotLt:'#e63946', a4Dk:'#1e6f5c',
+    cardFill:'#fffdf0', cardEdge:'#141414',
+    line1:'#1d6fd1', line2:'#2a9d8f', line3:'#e07a00', line4:'#e63946',
+    areaTop:'rgba(29,111,209,.28)', areaMid:'rgba(29,111,209,.08)', areaBot:'rgba(29,111,209,0)', barCool:'rgba(29,111,209,.40)',
+    progressTrack:'rgba(20,20,20,.16)', footer:'rgba(20,20,20,.55)', chromeTag:'#141414',
+    ghost:'rgba(20,20,20,.07)', thanksColor:'#141414', thanksGlow:'rgba(20,20,20,.2)'
+  },
+  noir: {
+    label:'NOIR', bgStyle:'noir', cardStyle:'noir',
+    fonts:{ display:"'Bahnschrift','Helvetica Neue',Arial,'Microsoft YaHei',sans-serif", mono:"'Consolas','Microsoft YaHei',monospace" },
+    bgTop:'#141414', bgMid:'#0c0c0c', bgBot:'#050505',
+    glowA:'rgba(255,255,255,.07)', glowB:'rgba(255,255,255,.05)', glowC:'rgba(255,255,255,.04)',
+    gridLine:'rgba(255,255,255,.045)', vignette:.62, grain:.05, scan:.08,
+    particleRGB:'255,255,255', particleMaxA:.16, gridRGB:'255,255,255', dimRGB:'200,200,200', panelRGB:'10,10,10', inkRGB:'242,242,242',
+    ink:'#f2f2f2', inkDim:'#a8a8a8', inkFaint:'rgba(255,255,255,.4)', hiInk:'#ffffff', chipBg:'#1f1f1f',
+    a1:'#f2f2f2', a2:'#d8d8d8', a3:'#cfcfcf', a4:'#bdbdbd', blue:'#e0e0e0', orange:'#ffffff', hot:'#ffffff',
+    a1Lt:'#ffffff', a2Lt:'#ffffff', a3Lt:'#e6e6e6', a4Lt:'#e6e6e6', blueLt:'#d0d0d0', hotLt:'#ffffff', a4Dk:'#4a4a4a',
+    cardFill:'#131313', cardEdge:'#3d3d3d',
+    line1:'#5a5a5a', line2:'#9a9a9a', line3:'#d6d6d6', line4:'#ffffff',
+    areaTop:'rgba(255,255,255,.20)', areaMid:'rgba(255,255,255,.06)', areaBot:'rgba(255,255,255,0)', barCool:'rgba(255,255,255,.20)',
+    progressTrack:'rgba(255,255,255,.14)', footer:'rgba(255,255,255,.4)', chromeTag:'#f2f2f2',
+    ghost:'rgba(255,255,255,.045)', thanksColor:'#f2f2f2', thanksGlow:'rgba(255,255,255,.4)'
+  }
+};
+
+let THEME = (() => {
+  try {
+    const q = new URLSearchParams(location.search).get('theme');
+    if (q && THEMES[q]) return q;
+    const s = localStorage.getItem('size-report-theme');
+    if (s && THEMES[s]) return s;
+  } catch (e) {}
+  return 'nova';
+})();
+let TH = THEMES[THEME];
+const rgbA = (rgb, a) => `rgba(${rgb},${a})`;
+const inkA = a => rgbA(TH.inkRGB, a);
+const dimA = a => rgbA(TH.dimRGB, a);
+const panelA = a => rgbA(TH.panelRGB, a);
+const gridA = a => rgbA(TH.gridRGB, a);
+const particleA = a => rgbA(TH.particleRGB, a);
+const hexToRgb = h => { const n = parseInt(h.slice(1), 16); return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`; };
+const hexA = (hex, a) => rgbA(hexToRgb(hex), a);
+const a1A = a => rgbA(hexToRgb(TH.a1), a);
+const a2A = a => rgbA(hexToRgb(TH.a2), a);
+const a3A = a => rgbA(hexToRgb(TH.a3), a);
+const a4A = a => rgbA(hexToRgb(TH.a4), a);
+const blueA = a => rgbA(hexToRgb(TH.blue), a);
+const hotA = a => rgbA(hexToRgb(TH.hot), a);
+function applyTheme(name, persist){
+  THEME = name; TH = THEMES[name];
+  const scanEl = document.getElementById('scan');
+  if (scanEl) scanEl.style.opacity = String(TH.scan);
+  const wrap = document.getElementById('stage-wrap');
+  if (wrap) wrap.style.boxShadow = name === 'paper' ? '0 0 60px rgba(31,78,121,.25), 0 30px 80px rgba(28,26,23,.35)'
+    : name === 'terminal' ? '0 0 70px rgba(51,255,102,.18), 0 0 160px rgba(51,255,102,.07)'
+    : name === 'pop' ? '0 0 0 6px #141414, 0 24px 60px rgba(20,20,20,.4)'
+    : name === 'noir' ? '0 0 80px ' + inkA(.09) + ', 0 0 200px rgba(0,0,0,.9)'
+    : '0 0 90px a1A(.10), 0 0 220px a2A(.06)';
+  document.body.className = (document.body.className || '').replace(/\btheme-\w+\b/g, '').trim();
+  document.body.classList.add('theme-' + name);
+  if (persist !== false) { try { localStorage.setItem('size-report-theme', name); } catch (e) {} }
+  document.querySelectorAll('#themeToggle button').forEach(b => {
+    b.classList.toggle('active', b.dataset.theme === name);
+    b.setAttribute('aria-pressed', b.dataset.theme === name ? 'true' : 'false');
+  });
+}
+
+
+/* ================= I18N (English default · 简中) ================= */
+const I18N = {
+  en: {
+    sceneNames: { intro:'INTRO', method:'METHODOLOGY', timeline:'VS CODE TIMELINE', spike:'2026 SPIKE', zed:'ZED BENCHMARK', why:'WHY IT GREW', board:'SCORECARD', outro:'SOURCES' },
+    docTitle: 'The Growing Editor',
+    epKicker: 'EP.01 · SIZE REPORT · WINDOWS x64',
+    t1: 'THE GROWING', t2: 'EDITOR',
+    subline: 'VS Code: a decade up  ×  Zed: one year down',
+    submeta: 'WINDOWS x64 · 132 + 134 OFFICIAL INSTALLERS · DATA AS OF 2026-11-04',
+    instWeight: 'INSTALLER WEIGHT / IN MB',
+    stampVs: '10-YEAR GROWTH', stampZed: '1-YEAR NET',
+    ticker: 'VS CODE 1.14.0 · 42.0 MB → 1.145.0 · 256.3 MB   ///   ZED v0.208.4 · 89.4 MB → v1.26.2 · 64.8 MB   ///   WINDOWS x64 BENCHMARK   ///   DATA AS OF 2026-11-04   ///   10 YRS ×6.1 · 1 YR −27.5%   ///   ',
+    mKicker: '01 · METHODOLOGY & SCOPE', mTitle: 'One yardstick: Windows x64',
+    mBaseHead: 'BASELINE · BENCHMARK',
+    mRowsL: [['BASE PLATFORM','WINDOWS x64 (win32)'],['VS CODE PKG','win32-x64 · SYSTEM INSTALLER'],['VS CODE RANGE','1.14.0 (2017-06) → 1.145.0 (2026-11)'],['ZED PKG','Zed-x86_64.exe · GITHUB RELEASES'],['ZED RANGE','v0.208.4 (2025-10) → v1.26.2 (2026-10)'],['DATA AS OF','2026-11-04 · HTTP HEAD MEASURED']],
+    mNotesHead: 'SCOPE & NOTES',
+    mRowsR: [['RELEASES','x.y.0 MAIN RELEASES ONLY · NO PATCHES'],['INSTALLER Δ','SYSTEM 256,316,880 B vs USER 256,317,640 B · Δ760 B'],['UNIT','MB = 10^6 BYTES (NOT MiB)'],['REMINDER','INSTALLER ≠ INSTALLED DISK USAGE'],['CAVEAT','ZED WINDOWS ~13 MONTHS · NO EXTRAPOLATION'],['DATA QUALITY','266 OFFICIAL SOURCE POINTS · 0 MISSING · 0 ESTIMATES']],
+    vscodeCount: 'VS CODE MAIN RELEASES', vscodeCountSub: '2017 → 2026 · MONTHLY → WEEKLY',
+    zedCount: 'ZED STABLE RELEASES', zedCountSub: '2025-10 → 2026-10 · NEARLY WEEKLY',
+    mFootnote: 'METHOD: HTTP HEAD → Content-Length · FULL RAW DATA IN dist_dataset.json',
+    tlKicker: '02 · 2017 → 2026 / FULL TIMELINE', tlTitle: 'Nine years, a ×6.1 curve',
+    tlLatest: 'LATEST STABLE',
+    tlPills: [['+510.2%','10-YEAR GROWTH','rgba(239,68,68,.14)','rgba(239,68,68,.55)',TH.hotLt],['×6.1','SIZE MULTIPLE','rgba(251,191,36,.12)','rgba(251,191,36,.5)',TH.a3Lt],['+21.2%','AVG / YEAR (CAGR)','rgba(96,165,250,.12)','rgba(96,165,250,.5)',TH.blueLt]],
+    tlDelta1: 'Δ ABSOLUTE GROWTH', tlDelta2: 'Δ 2025-10 → 2026-11', tlDelta3: '2026 AVERAGE (n=37)',
+    tlYearly: 'AVG INSTALLER SIZE / MB PER YEAR',
+    spKicker: '03 · 2026 SPIKE / THE CLIFF', spTitle: '+121% in thirteen months',
+    spSurge: 'SURGE ZONE', spJumpsHead: 'TOP SINGLE-RELEASE JUMPS',
+    spWeekly: 'WEEKLY RELEASES · 37 x.y.0 IN 2026', sp13m: '13 MONTHS · +121%',
+    spFootnote: 'NO OFFICIAL SIZE ATTRIBUTION · CORRELATES WITH BUILT-IN AI / AGENT COMPONENTS (INFERRED)',
+    zdKicker: '04 · ZED BENCHMARK', zdTitle: 'One year — 27.5% lighter',
+    zdRange: 'v0.208.4 → v1.26.2 · 134 STABLE', zdSyncTitle: 'VS CODE · SAME WINDOW',
+    zdSyncRange: '1.106.0 → 1.145.0 · 40 x.y.0',
+    zdArch1Title: 'VS CODE · ELECTRON RUNTIME', zdArch1Body: 'CHROMIUM + NODE.JS ON BOARD · AI / EXTENSIONS BUILT IN', zdArch1Meta: 'INSTALLER ≈ WEB RUNTIME + EDITOR',
+    zdArch2Title: 'ZED · NATIVE RUST', zdArch2Body: 'GPU-NATIVE RENDER · NO ELECTRON · ON-DEMAND PARTS', zdArch2Meta: 'INSTALLER ≈ EDITOR + ASSETS',
+    zdFootnote: 'SCOPE NOTE: TIME RANGES NOT COMPARABLE (ZED WINDOWS ~13 MO) · NO TIME EXTRAPOLATION · INSTALLER ≠ INSTALLED SIZE',
+    wyKicker: '05 · WHY / ROOT CAUSES', wyTitle: 'Size is the receipt of architecture',
+    wyCards: [
+      { num:'01', en:'THE RUNTIME', cn:'Runtime', bullets:['Electron = Chromium + Node.js','CHROMIUM UPGRADES LIFT THE FLOOR','INSTALLER ≈ WEB RUNTIME + EDITOR'], metric:'CHROMIUM · TENS OF MB ON BOARD' },
+      { num:'02', en:'THE PAYLOAD', cn:'Payload', bullets:['1.107 → 1.145 : 124 → 256 MB','AI AGENTS + LANG SERVICES BUILT IN','RELEASE NOTES POINT TO BUILT-IN AI'], metric:'+132 MB · 2025-11 → 2026-11' },
+      { num:'03', en:'THE CADENCE', cn:'Cadence', bullets:['MONTHLY (2016–2025) → WEEKLY (2026)','37 x.y.0 RELEASES IN 2026','FEATURES > FOOTPRINT'], metric:'37 RELEASES · 2026 ALONE' }
+    ],
+    wyDisclaimerHead: 'DISCLAIMER',
+    wyDisclaimer: 'Microsoft has NOT published an official size breakdown. This is reasoned inference from architecture and public release notes.',
+    wyCompare: 'FOR CONTRAST · ZED, SAME WINDOW: ON-DEMAND PARTS + COMPRESSION → −27.5% IN A YEAR (v1.25.2: −23.8%)',
+    bdKicker: '06 · SCORECARD / FINAL', bdTitle: '256.3 vs 64.8 MB',
+    bdGap: '191.6 MB GAP', bdVerdict: 'BIG ≠ BETTER · SMALL ≠ WEAK',
+    bdVerdictSub: "Size is the receipt of architecture — not the editor's report card",
+    bdStatsVs: [['10-YEAR GROWTH','+510.2%',TH.hotLt],['SIZE MULTIPLE','×6.1',TH.a3Lt],['AVG / YEAR (CAGR)','+21.2%',TH.blueLt],['SAMPLED (x.y.0)','132',TH.ink]],
+    bdStatsZed: [['1-YEAR NET CHANGE','−27.5%',TH.a4Lt],['OFF PEAK','104.6 → 64.8',TH.a3Lt],['v1.25.2 SINGLE DROP','−23.8%',TH.hotLt],['SAMPLED (STABLE)','134',TH.ink]],
+    otKicker: '07 · SOURCES & NOTES', otTitle: 'Where the numbers come from',
+    otSourcesHead: 'SOURCES',
+    otSrc1d: 'OFFICIAL UPDATE SERVER · HEAD → Content-Length (MEASURED)',
+    otSrc2d: 'RELEASE DATE ARCHIVE (June 2017 → Nov 2026)',
+    otSrc3d: 'RELEASES API · assets[].size (Zed-x86_64.exe)',
+    otSrc4d: '132 VS CODE + 134 ZED RAW POINTS · FULL DATA WITH THE VIDEO',
+    otMethodHead: 'METHOD & SCOPE',
+    otMethod: ['WINDOWS x64 YARDSTICK (win32-x64 / Zed-x86_64.exe)','VS CODE x.y.0 ONLY (132) · ZED STABLE (134)','SYSTEM / USER INSTALLERS DIFFER BY 760 B · NEGLIGIBLE','MB = 10^6 BYTES · INSTALLER ≠ INSTALLED SIZE','ZED WINDOWS ~13 MONTHS · NO TIME EXTRAPOLATION','NO THIRD-PARTY ESTIMATES · NO INTERPOLATION · 0 MISSING'],
+    otDisclaimer: 'INDEPENDENT THIRD-PARTY MEASUREMENT · NOT AFFILIATED WITH MICROSOFT / ZED INDUSTRIES · DATA CHANGES WITH EVERY RELEASE · MEASURE YOUR OWN DISK USAGE',
+    otThanks: 'THANKS FOR WATCHING', otPills: ['LIKE', 'COIN', 'FAVORITE'],
+    otNext: 'NEXT UP · REAL DISK FOOTPRINT AFTER INSTALL (INSTALLED SIZE)'
+  },
+  zh: {
+    sceneNames: { intro:'片头', method:'方法与口径', timeline:'VS Code 全景', spike:'2026 大膨胀', zed:'Zed 对照', why:'原因拆解', board:'最终对照', outro:'来源与声明' },
+    docTitle: '越来越大的编辑器',
+    epKicker: 'EP.01 · SIZE REPORT · WINDOWS x64 基准',
+    t1: '越来越大的', t2: '编辑器',
+    subline: 'VS Code 十年膨胀史  ×  Zed 一年对照',
+    submeta: 'WINDOWS x64 · 132 + 134 个官方安装包 · 数据截至 2026-11-04',
+    instWeight: 'INSTALLER WEIGHT / 安装包体积',
+    stampVs: '十年增长', stampZed: '一年净变',
+    ticker: 'VS CODE 1.14.0 · 42.0 MB → 1.145.0 · 256.3 MB   ///   ZED v0.208.4 · 89.4 MB → v1.26.2 · 64.8 MB   ///   WINDOWS x64 基准   ///   数据截至 2026-11-04   ///   十年 ×6.1 · 一年 −27.5%   ///   ',
+    mKicker: '01 · 方法与口径 / METHODOLOGY', mTitle: '统一用 Windows x64 称重',
+    mBaseHead: '基准 · BENCHMARK',
+    mRowsL: [['基准平台','WINDOWS x64 (win32)'],['VS CODE 包','win32-x64 · SYSTEM INSTALLER'],['VS CODE 范围','1.14.0 (2017-06) → 1.145.0 (2026-11)'],['ZED 包','Zed-x86_64.exe · GITHUB RELEASES'],['ZED 范围','v0.208.4 (2025-10) → v1.26.2 (2026-10)'],['统计截至','2026-11-04 · HTTP HEAD 实测']],
+    mNotesHead: '口径 · NOTES',
+    mRowsR: [['版本口径','仅 x.y.0 主版本 · 补丁版忽略'],['安装器差异','系统 256,316,880 B vs 用户 256,317,640 B · Δ760 B'],['单位','MB = 10^6 bytes（非 MiB）'],['口径提醒','安装包 ≠ 安装后磁盘占用'],['对比局限','Zed Windows 仅约 13 个月 · 不外推'],['数据清洗','266 个官方源点 · 0 缺失 · 0 估算']],
+    vscodeCount: '个 VS CODE 主版本', vscodeCountSub: '2017 → 2026 · 月度/周度',
+    zedCount: '个 ZED 稳定版', zedCountSub: '2025-10 → 2026-10 · 接近每周',
+    mFootnote: '测量方式：HTTP HEAD → Content-Length · 完整数值见数据集 dist_dataset.json',
+    tlKicker: '02 · VS CODE 全景 / FULL TIMELINE', tlTitle: '九年六倍的增长曲线',
+    tlLatest: 'LATEST STABLE / 最新',
+    tlPills: [['+510.2%','十年累计增长','rgba(239,68,68,.14)','rgba(239,68,68,.55)',TH.hotLt],['×6.1','体积倍数','rgba(251,191,36,.12)','rgba(251,191,36,.5)',TH.a3Lt],['+21.2%','年均复合增长','rgba(96,165,250,.12)','rgba(96,165,250,.5)',TH.blueLt]],
+    tlDelta1: 'Δ 绝对增长', tlDelta2: 'Δ 2025-10 → 2026-11', tlDelta3: '2026 年单年平均',
+    tlYearly: '年均安装包体积 / MB PER YEAR',
+    spKicker: '03 · 2026 大膨胀 / THE 2026 SPIKE', spTitle: '十三个月 · 加了一倍多',
+    spSurge: '暴涨区', spJumpsHead: '单版本最大跳涨',
+    spWeekly: '每周发布 · 2026 年共 37 个 x.y.0', sp13m: '13 个月 · +121%',
+    spFootnote: '官方未公布体积归因明细 · 与 Release Notes 中内置 AI/Agent 组件增加相关（推断）',
+    zdKicker: '04 · ZED 对照 / THE ZED BENCHMARK', zdTitle: '一年 · 反而瘦了 27.5%',
+    zdRange: 'v0.208.4 → v1.26.2 · 134 个稳定版', zdSyncTitle: 'VS CODE · 同期',
+    zdSyncRange: '1.106.0 → 1.145.0 · 40 个 x.y.0',
+    zdArch1Title: 'VS CODE · ELECTRON 运行时', zdArch1Body: 'Chromium + Node.js 常驻 · 内置 AI / 插件默认分发', zdArch1Meta: '安装包 ≈ Web 运行时 + 编辑器',
+    zdArch2Title: 'ZED · 原生 RUST', zdArch2Body: 'GPU 原生渲染 · 无 Electron · 按需组件化', zdArch2Meta: '安装包 ≈ 编辑器本体 + 资源',
+    zdFootnote: '口径提醒：两者时间跨度不对等（Zed Windows 仅约 13 个月）· 不按时间外推 · 安装包 ≠ 安装后体积',
+    wyKicker: '05 · 原因拆解 / WHY', wyTitle: '体积是架构的诚实账单',
+    wyCards: [
+      { num:'01', en:'THE RUNTIME', cn:'架构层', bullets:['Electron = Chromium + Node.js','Chromium 大版本抬升整体水位','安装包 ≈ Web 运行时 + 编辑器'], metric:'CHROMIUM · 常驻：数十 MB 起' },
+      { num:'02', en:'THE PAYLOAD', cn:'内容层', bullets:['1.107 → 1.145：124 → 256 MB','AI 代理 / 补全 / 语言服务内置','Release Notes 中 AI 组件增多'], metric:'+132 MB · 2025-11 → 2026-11' },
+      { num:'03', en:'THE CADENCE', cn:'节奏层', bullets:['月度发布（2016–2025）→ 每周（2026）','2026 年已发布 37 个 x.y.0','体积取舍：功能完备 > 包体'], metric:'37 个版本 · 2026 单年' }
+    ],
+    wyDisclaimerHead: '声明 · DISCLAIMER',
+    wyDisclaimer: '微软未单独公布安装包体积的归因明细。以上为架构原理与公开 Release Notes 的合理推断。',
+    wyCompare: '对照 · 同期 Zed：按需组件 + 安装器压缩 → 一年净降 27.5%（v1.25.2 单次 −23.8%）',
+    bdKicker: '06 · 最终对照 / SCORECARD', bdTitle: '256.3 对 64.8 兆',
+    bdGap: '191.6 MB 差距', bdVerdict: '大 ≠ 好 · 小 ≠ 弱',
+    bdVerdictSub: '体积只是架构的账单，不是编辑器的成绩单',
+    bdStatsVs: [['十年累计增长','+510.2%',TH.hotLt],['体积倍数','×6.1',TH.a3Lt],['年均复合增长','+21.2%',TH.blueLt],['采样版本','132 个 x.y.0',TH.ink]],
+    bdStatsZed: [['一年净变化','−27.5%',TH.a4Lt],['自峰值回落','104.6 → 64.8',TH.a3Lt],['v1.25.2 单次','−23.8%',TH.hotLt],['采样稳定版','134 个',TH.ink]],
+    otKicker: '07 · 来源与声明 / SOURCES', otTitle: '数据从哪来',
+    otSourcesHead: '数据来源 · SOURCES',
+    otSrc1d: '官方更新服务器 · HEAD → Content-Length（实测，非估算）',
+    otSrc2d: '各版本发布日期存档（June 2017 → Nov 2026）',
+    otSrc3d: 'Releases API · assets[].size（Zed-x86_64.exe）',
+    otSrc4d: '132 + 134 行原始测量 · 完整数值随视频发布',
+    otMethodHead: '方法与口径 · METHOD',
+    otMethod: ['Windows x64 统一基准（win32-x64 / Zed-x86_64.exe）','VS Code 仅 x.y.0（132 个）· Zed 稳定版（134 个）','系统 / 用户安装器差 760 B · 可忽略','MB = 10^6 bytes · 安装包 ≠ 安装后体积','Zed Windows 仅约 13 个月 · 不按时间外推','无第三方估算 · 无插值补点 · 0 缺失值'],
+    otDisclaimer: '独立第三方测量 · 与 Microsoft / Zed Industries 无隶属关系 · 数据随版本持续变化 · 安装后实际占用以本机为准',
+    otThanks: '感谢观看', otPills: ['点赞', '投币', '收藏'],
+    otNext: '下期预告 · 安装后的真实磁盘占用（INSTALLED SIZE）'
+  }
+};
+let LANG = (() => {
+  try {
+    const q = new URLSearchParams(location.search).get('lang');
+    if (q === 'zh' || q === 'en') return q;
+    const s = localStorage.getItem('size-report-lang');
+    if (s === 'zh' || s === 'en') return s;
+  } catch (e) {}
+  return 'en';   // English is the default
+})();
+const T = key => I18N[LANG][key];
+let SCENE_NAMES = I18N[LANG].sceneNames;
+
+/* ================= RENDER ENGINE ================= */
+const W = 1920, H = 1080;
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+try { ctx.letterSpacing = '0px'; } catch (e) {}
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const seg = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOutBack = t => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+const rnd = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const D2 = d => Date.parse(d.length === 7 ? d + '-01' : d);
+const fmtMB = (v, d=1) => v.toFixed(d);
+const pad2 = n => String(n).padStart(2, '0');
+const mmss = s => `${pad2(Math.floor(s / 60))}:${pad2(Math.floor(s % 60))}`;
+
+function setLS(px){ try { ctx.letterSpacing = px + 'px'; } catch(e){} }
+function txt(str, x, y, o){
+  o = o || {};
+  ctx.save();
+  ctx.globalAlpha = o.alpha == null ? 1 : o.alpha;
+  ctx.font = `${o.italic ? 'italic ' : ''}${o.weight || 700} ${o.size || 32}px ${o.font || TH.fonts.display}`;
+  ctx.textAlign = o.align || 'left';
+  ctx.textBaseline = o.baseline || 'alphabetic';
+  setLS(o.ls || 0);
+  if (o.glow) { ctx.shadowColor = o.glow; ctx.shadowBlur = o.glowBlur || 22; }
+  if (o.stroke) { ctx.lineWidth = o.strokeW || 2; ctx.strokeStyle = o.stroke; ctx.strokeText(str, x, y); }
+  ctx.fillStyle = o.color || TH.ink;
+  ctx.fillText(str, x, y);
+  ctx.restore();
+}
+function mono(str, x, y, o){ o = o || {}; o.font = TH.fonts.mono; o.weight = o.weight || 600; txt(str, x, y, o); }
+function rrect(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function card(x, y, w, h, o){
+  o = o || {};
+  const style = TH.cardStyle;
+  const r = o.r == null ? 18 : o.r;
+  ctx.save();
+
+  if (style === 'print' || style === 'pop'){
+    const off = style === 'pop' ? 9 : 6;
+    ctx.shadowColor = style === 'pop' ? '#141414' : 'rgba(28,26,23,.30)';
+    ctx.shadowBlur = 0; ctx.shadowOffsetX = off; ctx.shadowOffsetY = off;
+    rrect(x, y, w, h, style === 'pop' ? 10 : 4);
+    ctx.fillStyle = o.fill || TH.cardFill; ctx.fill();
+    ctx.shadowColor = 'transparent'; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+    ctx.lineWidth = style === 'pop' ? 3.5 : 1.6; ctx.strokeStyle = TH.cardEdge; ctx.stroke();
+    if (style === 'pop'){
+      ctx.save(); rrect(x, y, w, h, 10); ctx.clip();
+      for (let rr = 0; rr < 4; rr++) for (let cc = 0; cc < 6 - rr; cc++){
+        ctx.beginPath(); ctx.arc(x + w - 26 - cc * 17, y + 24 + rr * 17, Math.max(.8, 5.5 - rr * 1.35), 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(20,20,20,.16)'; ctx.fill();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (style === 'term'){
+    rrect(x, y, w, h, 0);
+    ctx.fillStyle = o.fill || TH.cardFill; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = o.edge || TH.cardEdge; ctx.stroke();
+    ctx.globalAlpha = .55; ctx.lineWidth = 1; ctx.strokeStyle = TH.cardEdge;
+    ctx.strokeRect(x + 5, y + 5, w - 10, h - 10);
+    ctx.globalAlpha = 1;
+    ctx.font = '700 18px ' + TH.fonts.mono; ctx.fillStyle = TH.a1;
+    ctx.fillText('+', x + 9, y + 21); ctx.fillText('+', x + w - 17, y + 21);
+    ctx.fillText('+', x + 9, y + h - 9); ctx.fillText('+', x + w - 17, y + h - 9);
+    ctx.restore();
+    return;
+  }
+
+  if (style === 'noir'){
+    rrect(x, y, w, h, 4);
+    ctx.fillStyle = o.fill || TH.cardFill; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = o.edge || TH.cardEdge; ctx.stroke();
+    const L = 22;
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.35)';
+    const corners = [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]];
+    for (const [cx2, cy2, sx, sy] of corners){
+      ctx.beginPath(); ctx.moveTo(cx2 + sx * L, cy2); ctx.lineTo(cx2, cy2); ctx.lineTo(cx2, cy2 + sy * L); ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+
+  // hud (default): translucent panel + neon corner ticks
+  rrect(x, y, w, h, r);
+  ctx.fillStyle = o.fill || TH.cardFill; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = o.edge || TH.cardEdge; ctx.stroke();
+  const L = 26, a = o.accent || a1A(.85);
+  ctx.lineWidth = 3; ctx.strokeStyle = a;
+  ctx.beginPath(); ctx.moveTo(x, y + L); ctx.lineTo(x, y); ctx.lineTo(x + L, y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + w - L, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + L); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y + h - L); ctx.lineTo(x, y + h); ctx.lineTo(x + L, y + h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + w - L, y + h); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w, y + h - L); ctx.stroke();
+  ctx.restore();
+}
+function chip(x, y, w, h, fill, edge){
+  const style = TH.cardStyle;
+  if (style === 'print'){
+    rrect(x, y, w, h, 4); ctx.fillStyle = TH.cardFill; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = TH.cardEdge; ctx.stroke(); return;
+  }
+  if (style === 'pop'){
+    rrect(x, y, w, h, 6); ctx.fillStyle = TH.cardFill; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = TH.cardEdge; ctx.stroke(); return;
+  }
+  if (style === 'term'){
+    rrect(x, y, w, h, 0); ctx.fillStyle = TH.cardFill; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = edge || TH.a1; ctx.stroke(); return;
+  }
+  if (style === 'noir'){
+    rrect(x, y, w, h, h / 2); ctx.fillStyle = 'rgba(255,255,255,.04)'; ctx.fill();
+    ctx.lineWidth = 1.2; ctx.strokeStyle = edge || '#3d3d3d'; ctx.stroke(); return;
+  }
+  rrect(x, y, w, h, h / 2);
+  ctx.fillStyle = fill || a1A(.12); ctx.fill();
+  ctx.lineWidth = 1.2; ctx.strokeStyle = edge || a1A(.45); ctx.stroke();
+}
+function circle(x, y, r, fill){ ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); }
+function ring(x, y, r, color, lw, blur){
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = lw || 3;
+  ctx.shadowColor = color; ctx.shadowBlur = blur || 16;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+}
+function glowSpot(x, y, r, color){
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+function line(x1, y1, x2, y2){ ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+function dashedLine(x1, y1, x2, y2, dash, color, lw){
+  ctx.save(); ctx.setLineDash(dash || [6, 6]); ctx.strokeStyle = color || gridA(.3); ctx.lineWidth = lw || 1.5;
+  line(x1, y1, x2, y2); ctx.restore();
+}
+function mapRange(v, a, b, c, d){ return c + (d - c) * clamp((v - a) / (b - a), -0.001, 1.001); }
+
+/* ================= BACKGROUND & CHROME ================= */
+const PARTICLES = Array.from({length: 80}, (_, i) => ({
+  x: rnd(i * 3 + 1) * W,
+  y0: rnd(i * 3 + 2) * H,
+  speed: 14 + rnd(i * 3 + 3) * 34,
+  r: .7 + rnd(i * 7 + 5) * 2.1,
+  tw: rnd(i * 11 + 7) * Math.PI * 2
+}));
+
+function paintBase(){
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, TH.bgTop); g.addColorStop(.55, TH.bgMid); g.addColorStop(1, TH.bgBot);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+function paintHudBg(t){
+  glowSpot(320 + Math.sin(t * .18) * 70, 150, 760, TH.glowA);
+  glowSpot(1620 + Math.cos(t * .15) * 70, 930, 820, TH.glowB);
+  glowSpot(960, 1120 + Math.sin(t * .12) * 50, 900, TH.glowC);
+  ctx.save();
+  ctx.strokeStyle = TH.gridLine; ctx.lineWidth = 1;
+  for (let x = 60; x < W; x += 120) line(x, 0, x, H);
+  for (let y = 60; y < H; y += 120) line(0, y, W, y);
+  ctx.restore();
+}
+function paintPrintBg(t){
+  // warm paper + faint ledger lines + paper fibers
+  ctx.save();
+  ctx.strokeStyle = TH.gridLine; ctx.lineWidth = 1;
+  for (let y = 100; y < H; y += 110) line(0, y, W, y);
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle = 'rgba(28,26,23,.07)'; ctx.lineWidth = 1.4;
+  for (let i = 0; i < 150; i++){
+    const x = rnd(i * 1.7 + 3) * W, y = rnd(i * 3.1 + 17) * H, len = 6 + rnd(i * 7.3 + 29) * 18, ang = (rnd(i * 5.9 + 41) - .5) * .9;
+    line(x, y, x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+  }
+  ctx.restore();
+}
+function paintTermBg(t){
+  // phosphor center glow + darkened tube edges
+  glowSpot(960, 430, 880, TH.glowA);
+  glowSpot(960, 60, 500, TH.glowB);
+  ctx.save();
+  ctx.strokeStyle = TH.gridLine; ctx.lineWidth = 1;
+  for (let y = 90; y < H; y += 90) line(0, y, W, y);
+  ctx.restore();
+  ctx.fillStyle = 'rgba(0,0,0,' + (0.018 + 0.012 * (0.5 + 0.5 * Math.sin(t * 13))).toFixed(4) + ')';
+  ctx.fillRect(0, 0, W, H);
+}
+function paintPopBg(t){
+  // sunburst wedges from top-center + halftone corner dots
+  ctx.save();
+  const cx = W / 2, cy = -280, R = 1750;
+  ctx.translate(cx, cy);
+  for (let i = 0; i < 22; i++){
+    if (i % 2) continue;
+    const a0 = (i / 22) * Math.PI * 2, a1 = ((i + 1) / 22) * Math.PI * 2;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a1); ctx.closePath();
+    ctx.fillStyle = 'rgba(255,182,39,.42)'; ctx.fill();
+  }
+  ctx.restore();
+  // halftone dots, top-right & bottom-left
+  const cluster = (ox, oy, flip) => {
+    for (let r = 0; r < 9; r++){
+      for (let c = 0; c < 10 - r; c++){
+        const x = ox + (flip ? -1 : 1) * c * 34, y = oy + r * 34;
+        ctx.beginPath(); ctx.arc(x, y, Math.max(1.2, 9 - r * 0.95), 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(20,20,20,.22)'; ctx.fill();
+      }
+    }
+  };
+  cluster(W - 60, 70, true);
+  cluster(60, H - 70, false);
+}
+function paintNoirBg(t){
+  glowSpot(320 + Math.sin(t * .18) * 60, 160, 760, TH.glowA);
+  glowSpot(1620 + Math.cos(t * .15) * 60, 930, 820, TH.glowB);
+  ctx.save();
+  ctx.strokeStyle = TH.gridLine; ctx.lineWidth = 1;
+  for (let y = 60; y < H; y += 120) line(0, y, W, y);
+  ctx.restore();
+  // drifting vertical scratch
+  const sx = ((t * 150) % (W + 900)) - 450;
+  ctx.save();
+  ctx.globalAlpha = .045 + .035 * (0.5 + 0.5 * Math.sin(t * 1.7));
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(sx, 0, 2, H);
+  ctx.restore();
+}
+function paintGrain(t){
+  if (!TH.grain) return;
+  ctx.save();
+  for (let i = 0; i < 260; i++){
+    const x = rnd(i * 3.31 + 7) * W, y = rnd(i * 7.77 + 13) * H;
+    const a = TH.grain * (0.35 + 0.65 * Math.abs(Math.sin(t * 11 + i * 1.618)));
+    ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(4) + ')';
+    ctx.fillRect(x, y, 2, 2);
+  }
+  ctx.restore();
+}
+function drawBackground(t){
+  paintBase();
+  if (TH.bgStyle === 'print') paintPrintBg(t);
+  else if (TH.bgStyle === 'term') paintTermBg(t);
+  else if (TH.bgStyle === 'pop') paintPopBg(t);
+  else if (TH.bgStyle === 'noir') paintNoirBg(t);
+  else paintHudBg(t);
+
+  // floating particles (skip where theme disables them)
+  if (TH.particleMaxA > 0){
+    for (const p of PARTICLES){
+      const py = (p.y0 - t * p.speed) % H;
+      const y = py < 0 ? py + H : py;
+      const a = (.18 + .30 * (0.5 + 0.5 * Math.sin(t * 1.6 + p.tw))) * (TH.particleMaxA / .30);
+      ctx.fillStyle = particleA(a.toFixed(3));
+      ctx.beginPath(); ctx.arc(p.x, y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  paintGrain(t);
+
+  // vignette
+  const v = ctx.createRadialGradient(W/2, H/2, H*.34, W/2, H/2, H*.78);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,' + TH.vignette + ')');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+}
+
+function drawChrome(t, scene){
+  const p = clamp(t / TOTAL, 0, 1);
+  const g = ctx.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, TH.a1); g.addColorStop(.5, TH.blue); g.addColorStop(1, TH.a2);
+  ctx.save();
+  ctx.shadowColor = TH.a1; ctx.shadowBlur = 8;
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W * p, 4);
+  ctx.restore();
+  ctx.fillStyle = TH.progressTrack; ctx.fillRect(W * p, 0, W, 4);
+
+  mono(`${mmss(t)} / ${mmss(TOTAL)}`, W - 40, 34, { size:15, color:dimA(.75), align:'right', weight:600 });
+  txt('SIZE REPORT', 40, 36, { size:13, weight:800, color:inkA(.55), ls:4 });
+
+  mono('VS CODE × ZED · WINDOWS x64 INSTALLER REPORT', 40, H - 18, { size:11, color:dimA(.6), ls:1 });
+  mono(`EP.01 · 2026.11 · ${SCENE_NAMES[scene.id] || ''}`, W - 40, H - 18, { size:11, color:dimA(.6), align:'right', ls:1 });
+}
+
+function sceneKicker(kicker, title, lt){
+  const a = easeOut(seg(lt, 0, .8));
+  const lw = lerp(0, 90, easeOut(seg(lt, .1, .9)));
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = TH.a1; ctx.lineWidth = 3; ctx.shadowColor = TH.a1; ctx.shadowBlur = 8;
+  line(64, 66, 64 + lw, 66);
+  ctx.restore();
+  txt(kicker, 64 + 104, 74, { size:19, weight:800, color:TH.a1, ls:3, alpha:a });
+  const glow = (TH.cardStyle === 'print' || TH.cardStyle === 'pop') ? null : blueA(.35);
+  txt(title, 64, 128, { size:46, weight:800, color:TH.ink, alpha:a, glow:glow, glowBlur:18 });
+}
+
+/* ================= SCENE 1 · INTRO ================= */
+function drawStamp(cx, cy, r, main, sub, color, lt, at){
+  const p = easeOutBack(seg(lt, at, at + .55));
+  if (p <= 0) return;
+  ctx.save();
+  ctx.translate(cx, cy); ctx.rotate(-0.21); ctx.scale(p, p); ctx.globalAlpha = clamp(p, 0, 1);
+  ctx.strokeStyle = color; ctx.lineWidth = 6; ctx.shadowColor = color; ctx.shadowBlur = 18;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, r - 10, 0, Math.PI * 2); ctx.stroke();
+  ctx.shadowBlur = 0;
+  txt(main, 0, 4, { size:r * .78, weight:900, color, align:'center', baseline:'middle', glow:color, glowBlur:12 });
+  txt(sub, 0, r * .52, { size:r * .17, weight:800, color, align:'center', baseline:'middle', ls:1 });
+  ctx.restore();
+}
+function drawPackage(x, y, w, h, accent, top, side, front, lt, at){
+  const dx = 54, dy = -44;
+  const p = easeOut(seg(lt, at, at + .9));
+  if (p <= 0) return;
+  ctx.save(); ctx.globalAlpha = p;
+  const drop = (1 - p) * 60;
+  ctx.translate(0, drop);
+  // top face
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w + dx, y + dy); ctx.lineTo(x + dx, y + dy); ctx.closePath();
+  ctx.fillStyle = top; ctx.fill(); ctx.strokeStyle = accent; ctx.globalAlpha = p * .9; ctx.lineWidth = 2; ctx.stroke();
+  // side face
+  ctx.globalAlpha = p;
+  ctx.beginPath(); ctx.moveTo(x + w, y); ctx.lineTo(x + w + dx, y + dy); ctx.lineTo(x + w + dx, y + dy + h); ctx.lineTo(x + w, y + h); ctx.closePath();
+  ctx.fillStyle = side; ctx.fill(); ctx.stroke();
+  // front face
+  const fg = ctx.createLinearGradient(x, y, x, y + h);
+  fg.addColorStop(0, front[0]); fg.addColorStop(1, front[1]);
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.fillStyle = fg; ctx.fill();
+  ctx.save(); ctx.shadowColor = accent; ctx.shadowBlur = 24; ctx.lineWidth = 2.5; ctx.strokeStyle = accent; ctx.stroke(); ctx.restore();
+  ctx.restore();
+}
+
+function drawIntro(lt, dur, t){
+  // kicker
+  const ka = easeOut(seg(lt, .1, 1.1));
+  ctx.save(); ctx.globalAlpha = ka;
+  const lw = lerp(0, 120, ka);
+  ctx.strokeStyle = TH.a1; ctx.lineWidth = 3; ctx.shadowColor = TH.a1; ctx.shadowBlur = 10;
+  line(96, 116, 96 + lw, 116); ctx.restore();
+  txt(T('epKicker'), 96 + 132, 124, { size:17, weight:800, color:TH.a1, ls:3, alpha:ka });
+
+  // title line 1 (staggered drop)
+  const l1 = T('t1');
+  const isZh = LANG === 'zh';
+  const s1 = isZh ? 150 : 116;
+  ctx.font = `900 ${s1}px ${TH.fonts.display}`;
+  let cx = 92;
+  for (let i = 0; i < l1.length; i++){
+    const p = easeOutBack(seg(lt, .35 + i * .13, 1.15 + i * .13));
+    const adv = ctx.measureText(l1[i]).width + s1 * 0.09;
+    if (p > 0){
+      ctx.save();
+      ctx.globalAlpha = clamp(p, 0, 1);
+      ctx.font = `900 ${s1}px ${TH.fonts.display}`;
+      ctx.fillStyle = TH.hiInk; ctx.shadowColor = gridA(.55); ctx.shadowBlur = 26;
+      ctx.fillText(l1[i], cx, 330 + (1 - clamp(p,0,1)) * -70);
+      ctx.restore();
+    }
+    cx += adv;
+  }
+  // title line 2 (gradient clip reveal)
+  const p2 = seg(lt, 1.0, 2.1);
+  const s2 = isZh ? 268 : 232;
+  if (p2 > 0){
+    const t2 = T('t2');
+    ctx.save();
+    ctx.font = `900 ${s2}px ${TH.fonts.display}`;
+    const tw = ctx.measureText(t2).width;
+    ctx.restore();
+    const gr = ctx.createLinearGradient(92, 0, 92 + tw, 0);
+    gr.addColorStop(0, TH.a1); gr.addColorStop(.45, TH.blue); gr.addColorStop(1, TH.a2);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 350, (tw + 260) * easeOut(p2), 330); ctx.clip();
+    txt(t2, 88, 640, { size:s2, weight:900, color:gr, glow:blueA(.6), glowBlur:40 });
+    ctx.restore();
+  }
+  // english ghost
+  txt('THE GROWING EDITOR', 96, 712, { size:37, weight:900, color:inkA(.14), ls:26, alpha:seg(lt, 1.3, 2.2) });
+
+  // subtitle
+  const sa = easeOut(seg(lt, 1.6, 2.6));
+  txt(T('subline'), 96, 792, { size:36, weight:800, color:TH.hiInk, alpha:sa });
+  mono(T('submeta'), 96, 836, { size:16, color:dimA(.7), alpha:sa, ls:1 });
+
+  // ---- right column: packages ----
+  mono(T('instWeight'), 1156, 190, { size:15, color:dimA(.75), ls:3, alpha:seg(lt, .8, 1.6) });
+  drawPackage(1156, 250, 600, 220, a1A(.9), '#173a5e', '#0c2036', ['#122c47', '#0a1a2e'], lt, .7);
+  drawPackage(1156, 560, 600, 220, a4A(.9), '#1d3a1e', '#111f12', ['#152b15', '#0b1a0d'], lt, 1.1);
+
+  // package contents (drawn after faces, clipped manually by positions)
+  const cp = easeOut(seg(lt, 2.8, 13));
+  const vsNow = lerp(42.0, 256.3, cp), zedNow = lerp(89.4, 64.8, cp);
+  const boxA = seg(lt, .7, 1.6), boxB = seg(lt, 1.1, 2.0);
+  if (boxA > 0){
+    ctx.save(); ctx.globalAlpha = boxA;
+    txt('VS CODE', 1190, 350, { size:56, weight:900, color:'#7ee7ff', glow:'rgba(34,211,238,.6)', glowBlur:18 });
+    mono('win32-x64 · SYSTEM INSTALLER', 1190, 386, { size:14, color:'rgba(159,216,239,.75)', ls:2 });
+    txt(fmtMB(vsNow), 1190, 452, { size:74, weight:900, color:'#eafcff', glow:'rgba(34,211,238,.45)', glowBlur:20 });
+    txt('MB', 1190 + 190, 452, { size:22, weight:800, color:'rgba(159,216,239,.8)' });
+    rrect(1190, 470, 128, 34, 17);
+    ctx.fillStyle = 'rgba(239,68,68,.16)'; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(239,68,68,.55)'; ctx.stroke();
+    txt('+510.2%', 1190 + 64, 493, { size:18, weight:800, color:'#ff9d9d', align:'center' });
+    ctx.restore();
+  }
+  if (boxB > 0){
+    ctx.save(); ctx.globalAlpha = boxB;
+    txt('ZED', 1190, 656, { size:56, weight:900, color:'#c9f97a', glow:'rgba(163,230,53,.55)', glowBlur:18 });
+    mono('Zed-x86_64.exe · GITHUB RELEASES', 1190, 692, { size:14, color:'rgba(214,242,160,.7)', ls:2 });
+    txt(fmtMB(zedNow), 1190, 758, { size:74, weight:900, color:'#f4ffe0', glow:'rgba(163,230,53,.4)', glowBlur:20 });
+    txt('MB', 1190 + 165, 758, { size:22, weight:800, color:'rgba(214,242,160,.8)' });
+    rrect(1190, 776, 128, 34, 17);
+    ctx.fillStyle = 'rgba(163,230,53,.12)'; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(163,230,53,.5)'; ctx.stroke();
+    txt('−27.5%', 1190 + 64, 799, { size:18, weight:800, color:'#c9f97a', align:'center' });
+    ctx.restore();
+  }
+  drawStamp(1762, 236, 58, '6.1×', T('stampVs'), '#ff8a8a', lt, 3.1);
+  drawStamp(1762, 546, 58, '0.73×', T('stampZed'), '#c9f97a', lt, 3.7);
+
+  // ---- bottom ticker (permanent dark strip, fixed colors) ----
+  const ty = 952, th = 74;
+  ctx.fillStyle = 'rgba(2,6,23,.85)'; ctx.fillRect(0, ty, W, th);
+  ctx.fillStyle = 'rgba(34,211,238,.30)'; ctx.fillRect(0, ty, W, 1.5); ctx.fillRect(0, ty + th - 1.5, W, 1.5);
+  const liveA = .55 + .45 * (0.5 + 0.5 * Math.sin(t * 5));
+  rrect(60, ty + 19, 108, 36, 18);
+  ctx.fillStyle = 'rgba(239,68,68,.16)'; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(239,68,68,.6)'; ctx.stroke();
+  circle(84, ty + 37, 6, 'rgba(255,120,120,' + liveA.toFixed(2) + ')');
+  txt('LIVE', 102, ty + 44, { size:16, weight:800, color:'#ffb3b3', ls:2 });
+  const ticker = T('ticker');
+  ctx.save();
+  ctx.beginPath(); ctx.rect(190, ty, W - 190, th); ctx.clip();
+  ctx.font = '600 21px ' + TH.fonts.mono;
+  const segW = ctx.measureText(ticker).width;
+  let off = (t * 165) % segW;
+  ctx.fillStyle = 'rgba(190,233,255,.85)';
+  for (let x = 200 - off; x < W + segW; x += segW) ctx.fillText(ticker, x, ty + 45);
+  ctx.restore();
+}
+
+/* ================= SCENE 2 · METHODOLOGY ================= */
+function methodRow(x, y, label, value, lt, at, accent){
+  const p = easeOut(seg(lt, at, at + .7));
+  if (p <= 0) return;
+  ctx.save(); ctx.globalAlpha = p;
+  ctx.translate((1 - p) * -28, 0);
+  ctx.strokeStyle = accent || TH.a1; ctx.lineWidth = 3;
+  line(x, y - 26, x, y + 34);
+  txt(label, x + 18, y - 8, { size:14, weight:700, color:dimA(.8), ls:2 });
+  mono(value, x + 18, y + 24, { size:20, color:TH.ink, weight:600 });
+  ctx.restore();
+}
+
+function drawMethod(lt){
+  sceneKicker(T('mKicker'), T('mTitle'), lt);
+
+  card(64, 152, 880, 620, { accent:a1A(.85) });
+  const benchW = LANG === 'zh' ? 240 : 290;
+  chip(96, 180, benchW, 40, a1A(.12), a1A(.5));
+  txt(T('mBaseHead'), 96 + benchW / 2, 206, { size:18, weight:800, color:TH.a1Lt, align:'center', ls:2 });
+  const L = T('mRowsL');
+  L.forEach(([k, v], i) => methodRow(96, 292 + i * 78, k, v, lt, .5 + i * .32, TH.a1));
+
+  card(976, 152, 880, 620, { accent:a2A(.8) });
+  chip(1008, 180, 220, 40, a2A(.12), a2A(.45));
+  txt(T('mNotesHead'), 1118, 206, { size:18, weight:800, color:TH.a2Lt, align:'center', ls:2 });
+  const R = T('mRowsR');
+  R.forEach(([k, v], i) => methodRow(1008, 292 + i * 78, k, v, lt, .8 + i * .32, TH.a2));
+
+  const cy = 872;
+  const p = easeOut(seg(lt, 3.4, 4.6));
+  ctx.save(); ctx.globalAlpha = p;
+  const n1 = Math.round(lerp(0, 132, easeOut(seg(lt, 3.6, 8.5))));
+  const n2 = Math.round(lerp(0, 134, easeOut(seg(lt, 4.0, 8.9))));
+  txt(String(n1), 520, cy + 40, { size:88, weight:900, color:TH.a1Lt, align:'right', glow:a1A(.5), glowBlur:24 });
+  txt(T('vscodeCount'), 544, cy + 36, { size:22, weight:700, color:TH.blueLt });
+  mono(T('vscodeCountSub'), 544, cy + 66, { size:13, color:dimA(.7) });
+  txt(String(n2), 1380, cy + 40, { size:88, weight:900, color:TH.a4Lt, align:'right', glow:a4A(.45), glowBlur:24 });
+  txt(T('zedCount'), 1404, cy + 36, { size:22, weight:700, color:TH.a4Lt });
+  mono(T('zedCountSub'), 1404, cy + 66, { size:13, color:a4A(.6) });
+  ctx.restore();
+  mono(T('mFootnote'), W / 2, 1024, { size:12, color:dimA(.55), align:'center', ls:1 });
+}
+
+/* ================= SCENE 3 · VS CODE TIMELINE ================= */
+const VS = DATA.vscode;
+const T_START = D2('2017-05-01'), T_END = D2('2026-12-15');
+const CH = { x: 88, yTop: 170, yBot: 640, w: 1150 };
+const yOf = v => CH.yBot - (v / 280) * (CH.yBot - CH.yTop);
+const xOf = t => CH.x + (t - T_START) / (T_END - T_START) * CH.w;
+
+function drawLineChart(lt, cfg){
+  // gridlines + y labels
+  [0, 50, 100, 150, 200, 250].forEach(v => {
+    dashedLine(CH.x, yOf(v), CH.x + CH.w, yOf(v), [5, 7], gridA(.14), 1);
+    txt(String(v), CH.x - 14, yOf(v) + 5, { size:15, color:dimA(.65), align:'right', font:TH.fonts.mono, weight:600 });
+  });
+  txt('MB', CH.x - 14, CH.yTop - 12, { size:12, color:dimA(.7), align:'right', ls:2 });
+  // x ticks 2017..2026
+  for (let y = 2017; y <= 2026; y++){
+    const X = xOf(D2(y + '-01-01'));
+    ctx.strokeStyle = gridA(.25); ctx.lineWidth = 1.5;
+    line(X, CH.yBot, X, CH.yBot + 8);
+    txt(String(y), clamp(X, CH.x + 20, CH.x + CH.w - 20), CH.yBot + 30, { size:15, color:dimA(.65), align:'center', font:TH.fonts.mono, weight:600 });
+  }
+  // 2026 shaded band
+  const bx = xOf(D2('2026-01-01'));
+  ctx.fillStyle = a3A(.07); ctx.fillRect(bx, CH.yTop, CH.x + CH.w - bx, CH.yBot - CH.yTop);
+  txt('2026', (bx + CH.x + CH.w) / 2, CH.yBot - 14, { size:15, weight:800, color:a3A(.7), align:'center', ls:4 });
+
+  // reveal
+  const reveal = easeInOut(seg(lt, 1.0, 23));
+  const lineEndX = CH.x + CH.w * reveal;
+
+  // area + line (clipped)
+  ctx.save();
+  ctx.beginPath(); ctx.rect(CH.x - 4, 0, lineEndX - CH.x + 8, H); ctx.clip();
+  // area
+  ctx.beginPath();
+  ctx.moveTo(xOf(D2(VS[0].date)), yOf(VS[0].mb));
+  for (const p of VS) ctx.lineTo(xOf(D2(p.date)), yOf(p.mb));
+  ctx.lineTo(xOf(D2(VS[VS.length - 1].date)), CH.yBot); ctx.lineTo(xOf(D2(VS[0].date)), CH.yBot); ctx.closePath();
+  const ag = ctx.createLinearGradient(0, CH.yTop, 0, CH.yBot);
+  ag.addColorStop(0, a1A(.32)); ag.addColorStop(.65, blueA(.08)); ag.addColorStop(1, blueA(0));
+  ctx.fillStyle = ag; ctx.fill();
+  // line
+  ctx.beginPath();
+  ctx.moveTo(xOf(D2(VS[0].date)), yOf(VS[0].mb));
+  for (const p of VS) ctx.lineTo(xOf(D2(p.date)), yOf(p.mb));
+  const lg = ctx.createLinearGradient(CH.x, 0, CH.x + CH.w, 0);
+  lg.addColorStop(0, TH.a1); lg.addColorStop(.55, TH.blue); lg.addColorStop(.8, TH.a3); lg.addColorStop(1, TH.hot);
+  ctx.save();
+  ctx.strokeStyle = lg; ctx.lineWidth = 4.5; ctx.lineJoin = 'round'; ctx.shadowColor = a1A(.7); ctx.shadowBlur = 14;
+  ctx.stroke(); ctx.restore();
+  ctx.restore();
+
+  // leading edge glow dot
+  if (reveal > 0 && reveal < 1){
+    const tx = T_START + (T_END - T_START) * reveal;
+    // find nearest point for y
+    let y = null;
+    for (let i = 0; i < VS.length - 1; i++){
+      const a = D2(VS[i].date), b = D2(VS[i + 1].date);
+      if (tx >= a && tx <= b){ y = lerp(VS[i].mb, VS[i + 1].mb, (tx - a) / (b - a)); break; }
+    }
+    if (y != null){ glowSpot(lineEndX, yOf(y), 34, a1A(.8)); circle(lineEndX, yOf(y), 6, TH.hiInk); }
+  }
+
+  // milestone flags (spread out ones only)
+  const flags = [
+    { date:'2019-02-01', v:'1.32', mb:50, row:0 },
+    { date:'2021-04-01', v:'1.56', mb:80, row:1 },
+    { date:'2024-05-01', v:'1.90', mb:100, row:0 }
+  ];
+  for (const f of flags){
+    const X = xOf(D2(f.date)), Y = yOf(f.mb);
+    if (X > lineEndX + 2) continue;
+    dashedLine(X, Y, X, CH.yBot, [4, 5], blueA(.35), 1);
+    circle(X, Y, 5, TH.a1Lt);
+    const py = CH.yTop + 10 + f.row * 40;
+    chip(X - 76, py, 152, 30, a1A(.10), a1A(.4));
+    txt(`${f.v} · ${f.mb} MB`, X, py + 21, { size:15, weight:700, color:TH.a1Lt, align:'center', font:TH.fonts.mono });
+  }
+
+  // final point
+  const fx = xOf(D2(VS[VS.length - 1].date)), fy = yOf(VS[VS.length - 1].mb);
+  if (reveal >= 0.985){
+    const pulse = .5 + .5 * Math.sin(lt * 4);
+    ring(fx, fy, 12 + pulse * 6, hotA(.9), 2.5, 16);
+    circle(fx, fy, 6.5, TH.hotLt);
+    chip(fx - 218, fy - 58, 206, 36, hotA(.16), hotA(.6));
+    txt('1.145 · 256.3 MB', fx - 115, fy - 34, { size:17, weight:800, color:TH.hotLt, align:'center', font:TH.fonts.mono });
+  }
+  // baseline
+  ctx.strokeStyle = gridA(.3); ctx.lineWidth = 2; line(CH.x, CH.yBot, CH.x + CH.w, CH.yBot);
+}
+
+function drawTimeline(lt, dur, t){
+  sceneKicker(T('tlKicker'), T('tlTitle'), lt);
+  drawLineChart(lt);
+
+  // ---- right rail ----
+  const rx = 1330;
+  txt(T('tlLatest'), rx, 196, { size:13, weight:700, color:dimA(.75), ls:3 });
+  const cp = easeOut(seg(lt, 6.5, 15));
+  const big = lerp(0, 256.3, cp);
+  txt(fmtMB(big), rx, 330, { size:128, weight:900, color:TH.hiInk, glow:blueA(.45), glowBlur:30 });
+  txt('MB', rx + 356, 330, { size:26, weight:800, color:dimA(.8) });
+  mono('VS CODE 1.145.0 · 2026-11-04', rx, 366, { size:14, color:dimA(.7), ls:1 });
+
+  // stat pills
+  const pills = T('tlPills');
+  pills.forEach(([v, d, f, e, tc], i) => {
+    const p = easeOut(seg(lt, 8.5 + i * .45, 9.6 + i * .45));
+    if (p <= 0) return;
+    ctx.save(); ctx.globalAlpha = p; ctx.translate((1 - p) * 40, 0);
+    rrect(rx, 400 + i * 64, 470, 52, 26);
+    ctx.fillStyle = f; ctx.fill(); ctx.lineWidth = 1.3; ctx.strokeStyle = e; ctx.stroke();
+    txt(v, rx + 24, 434 + i * 64, { size:28, weight:900, color:tc, font:TH.fonts.display });
+    txt(d, rx + 178, 434 + i * 64, { size:18, weight:600, color:inkA(.75) });
+    ctx.restore();
+  });
+
+  // delta rows
+  dashedLine(rx, 636, rx + 470, 636, [4, 6], gridA(.2), 1);
+  const rows = [
+    [T('tlDelta1'), '+214.3 MB', TH.hotLt],
+    [T('tlDelta2'), '+121%', TH.a3Lt],
+    [T('tlDelta3'), '198.1 MB · n=37', TH.blueLt]
+  ];
+  rows.forEach(([k, v, c], i) => {
+    const p = easeOut(seg(lt, 10.5 + i * .4, 11.6 + i * .4));
+    if (p <= 0) return;
+    ctx.save(); ctx.globalAlpha = p;
+    txt(k, rx, 676 + i * 54, { size:15, weight:600, color:dimA(.85) });
+    mono(v, rx, 700 + i * 54, { size:21, weight:700, color:c });
+    ctx.restore();
+  });
+
+  // ---- bottom strip: yearly averages ----
+  txt(T('tlYearly'), CH.x, 724, { size:13, weight:700, color:dimA(.75), ls:2 });
+  const years = DATA.summary.yearly;
+  const bw = 66, gap = (CH.w - years.length * bw) / (years.length - 1);
+  years.forEach((yr, i) => {
+    const p = easeOut(seg(lt, 12 + i * .55, 13.1 + i * .55));
+    if (p <= 0) return;
+    const bx = CH.x + i * (bw + gap);
+    const bh = (yr.avg / 210) * 210 * p;
+    const by = 1000 - bh;
+    const hot = yr.year === '2026';
+    if (hot){
+      const g2 = ctx.createLinearGradient(0, by, 0, 1000);
+      g2.addColorStop(0, TH.hot); g2.addColorStop(1, TH.orange);
+      ctx.save(); ctx.shadowColor = TH.hot; ctx.shadowBlur = 18 + 8 * Math.sin(lt * 4);
+      ctx.fillStyle = g2; rrect(bx, by, bw, bh, 6); ctx.fill(); ctx.restore();
+    } else {
+      ctx.fillStyle = blueA(.55); rrect(bx, by, bw, bh, 6); ctx.fill();
+      ctx.strokeStyle = blueA(.5); ctx.lineWidth = 1; rrect(bx, by, bw, bh, 6); ctx.stroke();
+    }
+    txt(String(yr.avg), bx + bw / 2, by - 8, { size:15, weight:700, color: hot ? TH.hotLt : TH.blueLt, align:'center', font:TH.fonts.mono });
+    txt("'" + yr.year.slice(2), bx + bw / 2, 1024, { size:15, weight:700, color: hot ? TH.hotLt : dimA(.6), align:'center', font:TH.fonts.mono });
+  });
+}
+
+/* ================= SCENE 4 · THE 2026 SPIKE ================= */
+const SPIKE_START = D2('2025-09-15'), SPIKE_END = D2('2026-12-01');
+const SC = { x: 132, yTop: 268, yBot: 762, w: 948 };
+const syOf = v => SC.yBot - (v - 100) / 170 * (SC.yBot - SC.yTop);
+const sxOf = t => SC.x + (t - SPIKE_START) / (SPIKE_END - SPIKE_START) * SC.w;
+
+function drawSpike(lt, dur, t){
+  sceneKicker(T('spKicker'), T('spTitle'), lt);
+
+  // left chart card
+  card(64, 152, 1104, 700, { accent:a3A(.8) });
+  chip(92, 178, 330, 38, a3A(.10), a3A(.45));
+  txt('ZOOM · 2025-10 → 2026-11', 257, 203, { size:16, weight:800, color:TH.a3Lt, align:'center', ls:2 });
+  txt('INSTALLER MB', 1136, 203, { size:12, weight:700, color:a3A(.55), align:'right', ls:2 });
+
+  // gridlines
+  [100, 150, 200, 250].forEach(v => {
+    dashedLine(SC.x, syOf(v), SC.x + SC.w, syOf(v), [5, 7], a3A(.13), 1);
+    txt(String(v), SC.x - 12, syOf(v) + 5, { size:14, color:a3A(.6), align:'right', font:TH.fonts.mono, weight:600 });
+  });
+  // x ticks
+  const ticks = [['2025-10','2025-10-01'],['2025-12','2025-12-01'],['2026-02','2026-02-01'],['2026-04','2026-04-01'],['2026-06','2026-06-01'],['2026-08','2026-08-01'],['2026-10','2026-10-01']];
+  ticks.forEach(([lab, d]) => {
+    const X = sxOf(D2(d));
+    ctx.strokeStyle = a3A(.25); ctx.lineWidth = 1.2; line(X, SC.yBot, X, SC.yBot + 7);
+    txt(lab, X, SC.yBot + 26, { size:13, color:a3A(.6), align:'center', font:TH.fonts.mono });
+  });
+  // surge-zone band 2026-04-01 → 2026-08-01
+  const b1 = sxOf(D2('2026-04-01')), b2 = sxOf(D2('2026-08-01'));
+  ctx.fillStyle = hotA(.09); ctx.fillRect(b1, SC.yTop, b2 - b1, SC.yBot - SC.yTop);
+  txt(T('spSurge'), (b1 + b2) / 2, SC.yTop + 22, { size:14, weight:800, color:hexA(TH.hotLt,.85), align:'center', ls:4 });
+
+  const pts = VS.filter(p => D2(p.date) >= D2('2025-09-15'));
+  const reveal = easeInOut(seg(lt, .8, 17));
+  const endX = SC.x + SC.w * reveal;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(SC.x - 4, 0, endX - SC.x + 8, H); ctx.clip();
+  ctx.beginPath();
+  ctx.moveTo(sxOf(D2(pts[0].date)), syOf(pts[0].mb));
+  for (const p of pts) ctx.lineTo(sxOf(D2(p.date)), syOf(p.mb));
+  const lg = ctx.createLinearGradient(SC.x, 0, SC.x + SC.w, 0);
+  lg.addColorStop(0, TH.a3); lg.addColorStop(.45, TH.orange); lg.addColorStop(1, TH.hot);
+  ctx.save();
+  ctx.strokeStyle = lg; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.shadowColor = hexA(TH.orange, .8); ctx.shadowBlur = 16;
+  ctx.stroke(); ctx.restore();
+  // dots
+  ctx.fillStyle = TH.a3Lt;
+  for (const p of pts){ ctx.beginPath(); ctx.arc(sxOf(D2(p.date)), syOf(p.mb), 3.2, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+  ctx.strokeStyle = a3A(.3); ctx.lineWidth = 2; line(SC.x, SC.yBot, SC.x + SC.w, SC.yBot);
+
+  // annotate key jumps
+  const ann = [
+    { d:'2025-10-01', mb:115.8, label:'115.8', up:true, c:TH.a3Lt },
+    { d:'2026-04-15', mb:158.2, label:'+16.8', up:true, c:TH.a3Lt },
+    { d:'2026-07-22', mb:251.9, label:'+36.1', up:true, c:TH.hotLt },
+    { d:'2026-11-04', mb:256.3, label:'256.3', up:true, c:TH.hotLt }
+  ];
+  for (const a of ann){
+    const X = sxOf(D2(a.d)), Y = syOf(a.mb);
+    if (X > endX + 2) continue;
+    dashedLine(X, Y, X, SC.yBot, [3, 5], a3A(.35), 1);
+    circle(X, Y, 5, a.c);
+    txt(a.label, X, Y - 14, { size:16, weight:800, color:a.c, align:'center', font:TH.fonts.mono });
+  }
+
+  // ---- right rail: TOP JUMPS ----
+  const rx = 1212;
+  txt(T('spJumpsHead'), rx, 196, { size:15, weight:800, color:a3A(.85), ls:4 });
+  txt('TOP JUMPS · x.y.0', rx, 220, { size:11, weight:600, color:dimA(.6), ls:2 });
+  const jumps = [
+    { v:'1.130.0', d:'+36.1 MB', w:1.00, date:'2026-07-22', to:'251.9' },
+    { v:'1.116.0', d:'+16.8 MB', w:.47, date:'2026-04-15', to:'158.2' },
+    { v:'1.140.0', d:'+11.5 MB', w:.32, date:'2026-09-30', to:'244.4' },
+    { v:'1.121.0', d:'+10.2 MB', w:.28, date:'2026-05-20', to:'167.3' },
+    { v:'1.122.0', d:'+9.8 MB',  w:.27, date:'2026-05-28', to:'177.2' }
+  ];
+  jumps.forEach((j, i) => {
+    const p = easeOut(seg(lt, 2 + i * .5, 3.1 + i * .5));
+    if (p <= 0) return;
+    ctx.save(); ctx.globalAlpha = p; ctx.translate((1 - p) * 44, 0);
+    const y = 252 + i * 106;
+    txt('0' + (i + 1), rx, y, { size:44, weight:900, color:a3A(.22), font:TH.fonts.display });
+    mono(j.v, rx + 66, y - 16, { size:22, weight:700, color:TH.a3Lt });
+    mono(j.d, rx + 262, y - 16, { size:22, weight:800, color: i === 0 ? TH.hotLt : TH.a3Lt });
+    mono(`${j.date} · → ${j.to} MB`, rx + 66, y + 8, { size:12, color:dimA(.65) });
+    // bar
+    const bw = 500 * j.w * easeOut(seg(lt, 2.3 + i * .5, 3.6 + i * .5));
+    const bg = ctx.createLinearGradient(rx + 66, 0, rx + 66 + 500, 0);
+    bg.addColorStop(0, TH.a3); bg.addColorStop(1, TH.hot);
+    ctx.fillStyle = a3A(.12); rrect(rx + 66, y + 20, 500, 12, 6); ctx.fill();
+    ctx.fillStyle = bg; rrect(rx + 66, y + 20, bw, 12, 6); ctx.fill();
+    if (i === 0){ ctx.shadowColor = TH.hot; }
+    ctx.restore();
+  });
+  mono(T('spWeekly'), rx, 806, { size:12, color:a3A(.55), ls:1 });
+
+  // ---- bottom strip: headline + marquee ----
+  const hy = 892;
+  const hp = easeOut(seg(lt, 1.2, 2.2));
+  ctx.save(); ctx.globalAlpha = hp;
+  txt('+140.5', 80, hy + 88, { size:120, weight:900, color:TH.hot, glow:hotA(.55), glowBlur:34, font:TH.fonts.display });
+  txt('MB', 480, hy + 88, { size:30, weight:800, color:hotA(.8) });
+  txt(T('sp13m'), 80, hy + 128, { size:26, weight:800, color:TH.a3Lt, ls:2 });
+  ctx.restore();
+  // marquee of all 2026 bumps
+  const my = 1000;
+  ctx.fillStyle = panelA(.8); ctx.fillRect(640, my - 34, W - 640, 54);
+  ctx.fillStyle = hotA(.3); ctx.fillRect(640, my - 34, W - 640, 1.5); ctx.fillRect(640, my + 20, W - 640, 1.5);
+  const bump = '1.107 +8.5  ·  1.112 +8.0  ·  1.113 +7.9  ·  1.116 +16.8  ·  1.118 +10.2  ·  1.121 +10.2  ·  1.122 +9.8  ·  1.126 +8.8  ·  1.130 +36.1  ·  1.140 +11.5  ·  1.141 +7.5  ·  ';
+  ctx.save();
+  ctx.beginPath(); ctx.rect(652, my - 34, W - 662, 54); ctx.clip();
+  ctx.font = '600 19px ' + TH.fonts.mono;
+  const sw = ctx.measureText(bump).width;
+  let off = (t * 200) % sw;
+  ctx.fillStyle = hexA(TH.a3Lt,.85);
+  for (let x = 660 - off; x < W + sw; x += sw) ctx.fillText(bump, x, my + 2);
+  ctx.restore();
+  mono(T('spFootnote'), W / 2, 1058, { size:12, color:dimA(.55), align:'center' });
+}
+
+/* ================= SCENE 5 · ZED BENCHMARK ================= */
+const ZED = DATA.zed;
+const Z_START = D2('2025-09-15'), Z_END = D2('2026-12-01');
+
+function miniChart(cfg){
+  const { x, yTop, yBot, w, yMin, yMax } = cfg;
+  const yOf2 = v => yBot - (v - yMin) / (yMax - yMin) * (yBot - yTop);
+  const xOf2 = t => x + (t - Z_START) / (Z_END - Z_START) * w;
+  cfg.grid.forEach(v => {
+    dashedLine(x, yOf2(v), x + w, yOf2(v), [5, 7], cfg.gridColor, 1);
+    txt(String(v), x - 10, yOf2(v) + 5, { size:13, color: cfg.gridLabel, align:'right', font:TH.fonts.mono, weight:600 });
+  });
+  for (let m = 0; m <= 13; m += 2){
+    const d = new Date(2025, 9 + m, 1);
+    const X = xOf2(D2(`${d.getFullYear()}-${pad2(d.getMonth() + 1)}-01`));
+    if (X > x + w + 4) break;
+    txt(`${d.getFullYear()}-${pad2(d.getMonth() + 1)}`, X, yBot + 24, { size:12, color: cfg.gridLabel, align:'center', font:TH.fonts.mono });
+  }
+  return { yOf2, xOf2 };
+}
+
+function drawZed(lt, dur, t){
+  sceneKicker(T('zdKicker'), T('zdTitle'), lt);
+
+  const reveal = easeInOut(seg(lt, .8, 14));
+
+  /* ---------- LEFT: ZED ---------- */
+  card(64, 152, 884, 640, { accent:a4A(.8) });
+  chip(92, 180, 220, 36, a4A(.12), a4A(.5));
+  txt('ZED · WINDOWS x64', 202, 204, { size:16, weight:800, color:TH.a4Lt, align:'center', ls:2 });
+  mono(T('zdRange'), 92, 244, { size:13, color:a4A(.6) });
+  txt('ZED', 900, 240, { size:64, weight:900, color:a4A(.10), align:'right' });
+
+  const ZC = { x: 140, yTop: 292, yBot: 668, w: 750, yMin: 55, yMax: 115, grid: [60, 80, 100], gridColor:a4A(.14), gridLabel:a4A(.55) };
+  const zc = miniChart(ZC);
+  const zpts = ZED.filter(p => D2(p.date) >= Z_START);
+  const zxLine = ZC.x + ZC.w * reveal;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(ZC.x - 4, 0, zxLine - ZC.x + 8, H); ctx.clip();
+  ctx.beginPath();
+  ctx.moveTo(zc.xOf2(D2(zpts[0].date)), zc.yOf2(zpts[0].mb));
+  for (const p of zpts) ctx.lineTo(zc.xOf2(D2(p.date)), zc.yOf2(p.mb));
+  ctx.save();
+  ctx.strokeStyle = TH.a4; ctx.lineWidth = 3.5; ctx.lineJoin = 'round'; ctx.shadowColor = a4A(.7); ctx.shadowBlur = 12;
+  ctx.stroke(); ctx.restore();
+  ctx.restore();
+  ctx.strokeStyle = a4A(.3); ctx.lineWidth = 1.5; line(ZC.x, ZC.yBot, ZC.x + ZC.w, ZC.yBot);
+  if (reveal > .93){
+    dashedLine(ZC.x, zc.yOf2(64.2), ZC.x + ZC.w, zc.yOf2(64.2), [6, 6], hotA(.55), 1.5);
+  }
+  const za = [
+    { d:'2025-10-15', mb:89.4, label:'89.4', c:TH.a4Lt, mode:'top' },
+    { d:'2026-01-25', mb:104.6, label:'PEAK 104.6', c:TH.a3Lt, mode:'top' },
+    { d:'2026-10-21', mb:64.2, label:'v1.25.2 · −23.8%', c:TH.hotLt, mode:'left' },
+    { d:'2026-10-28', mb:64.8, label:'64.8', c:TH.a4Lt, mode:'right' }
+  ];
+  for (const a of za){
+    const X = zc.xOf2(D2(a.d)), Y = zc.yOf2(a.mb);
+    if (X > zxLine + 2) continue;
+    circle(X, Y, 4.5, a.c);
+    if (a.mode === 'left'){
+      txt(a.label, X - 16, Y - 16, { size:14, weight:800, color:a.c, align:'right', font:TH.fonts.mono });
+    } else if (a.mode === 'right'){
+      txt(a.label, X + 10, Y + 5, { size:14, weight:800, color:a.c, align:'left', font:TH.fonts.mono });
+    } else {
+      txt(a.label, clamp(X, ZC.x + 60, ZC.x + ZC.w - 40), Y - 12, { size:14, weight:800, color:a.c, align:'center', font:TH.fonts.mono });
+    }
+  }
+
+  /* ---------- RIGHT: VS CODE same period ---------- */
+  card(972, 152, 884, 640, { accent:hotA(.75) });
+  const syncChipW = LANG === 'zh' ? 250 : 330;
+  chip(1125 - syncChipW / 2, 180, syncChipW, 36, hotA(.12), hotA(.5));
+  txt(T('zdSyncTitle'), 1125, 204, { size:16, weight:800, color:TH.hotLt, align:'center', ls:2 });
+  mono(T('zdSyncRange'), 1000, 244, { size:13, color:hotA(.55) });
+  txt('VS CODE', 1804, 240, { size:44, weight:900, color:hotA(.12), align:'right' });
+
+  const VC = { x: 1048, yTop: 292, yBot: 668, w: 750, yMin: 100, yMax: 280, grid: [100, 150, 200, 250], gridColor:hotA(.14), gridLabel:hotA(.5) };
+  const vc = miniChart(VC);
+  const vpts = VS.filter(p => D2(p.date) >= Z_START);
+  const vxLine = VC.x + VC.w * reveal;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(VC.x - 4, 0, vxLine - VC.x + 8, H); ctx.clip();
+  ctx.beginPath();
+  ctx.moveTo(vc.xOf2(D2(vpts[0].date)), vc.yOf2(vpts[0].mb));
+  for (const p of vpts) ctx.lineTo(vc.xOf2(D2(p.date)), vc.yOf2(p.mb));
+  const vg = ctx.createLinearGradient(VC.x, 0, VC.x + VC.w, 0);
+  vg.addColorStop(0, TH.blue); vg.addColorStop(.6, TH.orange); vg.addColorStop(1, TH.hot);
+  ctx.save();
+  ctx.strokeStyle = vg; ctx.lineWidth = 3.5; ctx.lineJoin = 'round'; ctx.shadowColor = hexA(TH.orange, .7); ctx.shadowBlur = 12;
+  ctx.stroke(); ctx.restore();
+  ctx.restore();
+  ctx.strokeStyle = hotA(.3); ctx.lineWidth = 1.5; line(VC.x, VC.yBot, VC.x + VC.w, VC.yBot);
+  const va = [
+    { d:'2025-10-01', mb:115.8, label:'115.8', c:TH.blueLt, mode:'top' },
+    { d:'2026-07-22', mb:251.9, label:'1.130 +36.1', c:TH.a3Lt, mode:'left' },
+    { d:'2026-11-04', mb:256.3, label:'256.3 · +121%', c:TH.hotLt, mode:'top' }
+  ];
+  for (const a of va){
+    const X = vc.xOf2(D2(a.d)), Y = vc.yOf2(a.mb);
+    if (X > vxLine + 2) continue;
+    circle(X, Y, 4.5, a.c);
+    if (a.mode === 'left'){
+      txt(a.label, X - 14, Y + 5, { size:14, weight:800, color:a.c, align:'right', font:TH.fonts.mono });
+    } else {
+      txt(a.label, clamp(X, VC.x + 70, VC.x + VC.w - 80), Y - 12, { size:14, weight:800, color:a.c, align:'center', font:TH.fonts.mono });
+    }
+  }
+
+  /* ---------- center VS emblem ---------- */
+  const ep = easeOutBack(seg(lt, 1.0, 2.0));
+  if (ep > 0){
+    ctx.save(); ctx.translate(960, 470); ctx.scale(ep, ep);
+    const pulse = .5 + .5 * Math.sin(t * 2.4);
+    ring(0, 0, 46 + pulse * 5, a3A(.75), 3, 18);
+    circle(0, 0, 40, panelA(.92));
+    ring(0, 0, 40, a3A(.9), 2, 12);
+    txt('VS', 0, 15, { size:34, weight:900, color:TH.a3Lt, align:'center', glow:a3A(.6), glowBlur:14 });
+    ctx.restore();
+  }
+
+  /* ---------- bottom architecture cards ---------- */
+  const by = 824, bh = 158;
+  const p1 = easeOut(seg(lt, 2.2, 3.2)), p2 = easeOut(seg(lt, 2.6, 3.6));
+  ctx.globalAlpha = p1; card(64, by, 884, bh, { accent:blueA(.7), r:14 }); ctx.globalAlpha = 1;
+  txt(T('zdArch1Title'), 92, by + 44, { size:19, weight:800, color:TH.blueLt, ls:1, alpha:p1 });
+  txt(T('zdArch1Body'), 92, by + 78, { size:16, weight:500, color:inkA(.75), alpha:p1 });
+  mono(T('zdArch1Meta'), 92, by + 112, { size:14, color:blueA(.6), alpha:p1 });
+  txt('≈ 4×', 912, by + 96, { size:64, weight:900, color:TH.blueLt, align:'right', alpha:p1, glow:blueA(.4), glowBlur:18 });
+
+  ctx.globalAlpha = p2; card(972, by, 884, bh, { accent:a4A(.7), r:14 }); ctx.globalAlpha = 1;
+  txt(T('zdArch2Title'), 1000, by + 44, { size:19, weight:800, color:TH.a4Lt, ls:1, alpha:p2 });
+  txt(T('zdArch2Body'), 1000, by + 78, { size:16, weight:500, color:inkA(.75), alpha:p2 });
+  mono(T('zdArch2Meta'), 1000, by + 112, { size:14, color:a4A(.55), alpha:p2 });
+  txt('−27.5%', 1820, by + 96, { size:56, weight:900, color:TH.a4Lt, align:'right', alpha:p2, glow:a4A(.4), glowBlur:18 });
+
+  mono(T('zdFootnote'), W / 2, 1014, { size:12, color:dimA(.55), align:'center' });
+}
+
+/* ================= SCENE 6 · WHY ================= */
+function iconLayers(cx, cy, s, color){
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.shadowColor = color; ctx.shadowBlur = 14; ctx.lineJoin = 'round';
+  for (let i = 0; i < 3; i++){
+    const y = cy - i * s * .62;
+    ctx.beginPath();
+    ctx.moveTo(cx, y - s * .42); ctx.lineTo(cx + s * .95, y); ctx.lineTo(cx, y + s * .42); ctx.lineTo(cx - s * .95, y); ctx.closePath();
+    ctx.globalAlpha = .45 + i * .28; ctx.stroke();
+  }
+  ctx.restore();
+}
+function iconPackage(cx, cy, s, color){
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.shadowColor = color; ctx.shadowBlur = 14; ctx.lineJoin = 'round';
+  ctx.strokeRect(cx - s * .8, cy - s * .55, s * 1.6, s * 1.15);
+  line(cx - s * .8, cy - s * .12, cx + s * .8, cy - s * .12);
+  line(cx, cy - s * .55, cx, cy - s * .12);
+  ctx.beginPath(); ctx.moveTo(cx - s * .26, cy + s * .14); ctx.lineTo(cx + s * .26, cy + s * .14); ctx.stroke();
+  ctx.restore();
+}
+function iconGauge(cx, cy, s, color){
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.shadowColor = color; ctx.shadowBlur = 14; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(cx, cy + s * .3, s * .85, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+  const ang = Math.PI * 1.5 + Math.sin(1) * .5;
+  line(cx, cy + s * .3, cx + Math.cos(-Math.PI * .28) * s * .62, cy + s * .3 + Math.sin(-Math.PI * .28) * s * .62);
+  circle(cx, cy + s * .3, 6, color);
+  ctx.restore();
+}
+
+function whyCard(x, lt, at, num, en, cn, bullets, metric, accent, iconFn){
+  const p = easeOut(seg(lt, at, at + 1.1));
+  if (p <= 0) return;
+  const y = 168, w = 560, h = 588;
+  ctx.save();
+  ctx.globalAlpha = p;
+  ctx.translate(0, (1 - easeOut(p)) * 70);
+  card(x, y, w, h, { accent, r:18 });
+  txt(num, x + w - 36, y + 118, { size:104, weight:900, color:inkA(.07), align:'right', font:TH.fonts.display });
+  iconFn(x + w / 2, y + 148, 62, accent);
+  txt(en, x + w / 2, y + 268, { size:13, weight:800, color:dimA(.75), align:'center', ls:5 });
+  txt(cn, x + w / 2, y + 312, { size:34, weight:800, color:TH.hiInk, align:'center' });
+  ctx.strokeStyle = accent; ctx.lineWidth = 2.5; ctx.globalAlpha = p * .8;
+  line(x + 70, y + 336, x + w - 70, y + 336);
+  ctx.globalAlpha = p;
+  bullets.forEach((b, i) => {
+    const bp = easeOut(seg(lt, at + .5 + i * .3, at + 1.1 + i * .3));
+    ctx.save(); ctx.globalAlpha = p * bp;
+    ctx.fillStyle = accent;
+    const bx = x + 48, byy = y + 384 + i * 46;
+    ctx.beginPath(); ctx.moveTo(bx, byy - 6); ctx.lineTo(bx + 7, byy + 1); ctx.lineTo(bx, byy + 8); ctx.lineTo(bx - 7, byy + 1); ctx.closePath(); ctx.fill();
+    txt(b, bx + 22, byy + 6, { size:18, weight:500, color:inkA(.88) });
+    ctx.restore();
+  });
+  const mp = easeOut(seg(lt, at + 1.2, at + 1.8));
+  ctx.save(); ctx.globalAlpha = p * mp;
+  const mw = 400;
+  rrect(x + (w - mw) / 2, y + h - 82, mw, 46, 23);
+  ctx.fillStyle = panelA(.55); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = accent; ctx.stroke();
+  txt(metric, x + w / 2, y + h - 52, { size:16, weight:800, color:TH.hiInk, align:'center', font:TH.fonts.mono });
+  ctx.restore();
+  ctx.restore();
+}
+
+function drawWhy(lt){
+  sceneKicker(T('wyKicker'), T('wyTitle'), lt);
+  T('wyCards').forEach((c, i) => {
+    const accents = [TH.a1, TH.a2, TH.a3];
+    const icons = [iconLayers, iconPackage, iconGauge];
+    whyCard(64 + i * 616, lt, .6 + i * .5, c.num, c.en, c.cn, c.bullets, c.metric, accents[i], icons[i]);
+  });
+
+  // honesty bar
+  const p = easeOut(seg(lt, 4.2, 5.4));
+  ctx.save(); ctx.globalAlpha = p;
+  card(64, 788, 1792, 92, { accent:a3A(.55), r:14, fill:panelA(.55) });
+  txt(T('wyDisclaimerHead'), 96, 824, { size:12, weight:800, color:a3A(.7), ls:3 });
+  txt(T('wyDisclaimer'), 96, 856, { size:17, weight:500, color:hexA(TH.a3Lt,.9) });
+  mono('INFERENCE, NOT OFFICIAL ATTRIBUTION', 1832, 824, { size:11, color:a3A(.4), align:'right', ls:2 });
+  ctx.restore();
+
+  mono(T('wyCompare'), W / 2, 928, { size:14, color:a4A(.75), align:'center' });
+}
+
+/* ================= SCENE 7 · SCORECARD ================= */
+function scorePanel(x, lt, at, accent, chipText, chipFill, chipEdge, chipTxt, version, bigTarget, stats, glowC){
+  const p = easeOut(seg(lt, at, at + 1.0));
+  if (p <= 0) return;
+  const y = 160, w = 700, h = 528;
+  ctx.save(); ctx.globalAlpha = p; ctx.translate(0, (1 - p) * 46);
+  card(x, y, w, h, { accent, r:18 });
+  chip(x + 40, y + 34, 190, 40, chipFill, chipEdge);
+  txt(chipText, x + 135, y + 60, { size:17, weight:800, color:chipTxt, align:'center', ls:3 });
+  mono(version, x + 40, y + 108, { size:14, color:dimA(.6), ls:1 });
+  const cp = easeOut(seg(lt, at + .6, at + 5.2));
+  txt(fmtMB(lerp(0, bigTarget, cp)), x + 40, y + 268, { size:150, weight:900, color:TH.hiInk, glow:glowC, glowBlur:34 });
+  txt('MB', x + 468, y + 268, { size:28, weight:800, color:inkA(.6) });
+  dashedLine(x + 40, y + 300, x + w - 40, y + 300, [4, 6], gridA(.18), 1);
+  stats.forEach(([k, v, c], i) => {
+    const sp = easeOut(seg(lt, at + 1.6 + i * .4, at + 2.3 + i * .4));
+    ctx.save(); ctx.globalAlpha = p * sp;
+    txt(k, x + 40, y + 344 + i * 44, { size:15, weight:500, color:dimA(.75) });
+    mono(v, x + w - 40, y + 344 + i * 44, { size:17, weight:700, color:c, align:'right' });
+    ctx.restore();
+  });
+  ctx.restore();
+}
+
+function drawBoard(lt, dur, t){
+  sceneKicker(T('bdKicker'), T('bdTitle'), lt);
+
+  scorePanel(64, lt, .4, a1A(.85), 'VS CODE', a1A(.12), a1A(.5), TH.a1Lt,
+    '1.145.0 · 2026-11-04 · WINDOWS x64', 256.3, T('bdStatsVs'), blueA(.5));
+  scorePanel(1156, lt, .8, a4A(.8), 'ZED', a4A(.12), a4A(.5), TH.a4Lt,
+    'v1.26.2 · 2026-10-28 · WINDOWS x64', 64.8, T('bdStatsZed'), a4A(.45));
+
+  // center ratio column
+  const cp = easeOut(seg(lt, 1.6, 2.6));
+  if (cp > 0){
+    ctx.save(); ctx.globalAlpha = cp;
+    txt('SIZE RATIO', 960, 268, { size:15, weight:800, color:a3A(.7), align:'center', ls:6 });
+    const pulse = .5 + .5 * Math.sin(t * 2.6);
+    ring(960, 398, 88 + pulse * 7, a3A(.35), 10, 30);
+    txt('3.96×', 960, 428, { size:112, weight:900, color:TH.a3Lt, align:'center', glow:a3A(.55), glowBlur:36, font:TH.fonts.display });
+    txt(T('bdGap'), 960, 532, { size:22, weight:800, color:TH.a3Lt, align:'center' });
+    mono('≈ 2.96 × ZED', 960, 562, { size:15, color:a3A(.6), align:'center', ls:2 });
+    ctx.restore();
+  }
+
+  // verdict
+  const vp = easeOut(seg(lt, 4.6, 5.6));
+  txt(T('bdVerdict'), 960, 786, { size:62, weight:900, color:TH.hiInk, align:'center', alpha:vp, glow:gridA(.4), glowBlur:24 });
+  txt(T('bdVerdictSub'), 960, 834, { size:20, weight:500, color:dimA(.8), align:'center', alpha:vp });
+
+  // comparison bars
+  const bp = easeOut(seg(lt, 5.2, 6.6));
+  const bx = 380, bwMax = 1160;
+  const rows = [
+    ['VS CODE', 256.3, TH.a1, '256.3 MB'],
+    ['ZED', 64.8, TH.a4, '64.8 MB']
+  ];
+  rows.forEach(([name, v, c, lab], i) => {
+    const y = 886 + i * 56;
+    txt(name, bx - 24, y + 21, { size:17, weight:800, color:inkA(.8), align:'right', ls:2, alpha:bp });
+    ctx.save(); ctx.globalAlpha = bp;
+    ctx.fillStyle = gridA(.10); rrect(bx, y, bwMax, 26, 13); ctx.fill();
+    const w = bwMax * (v / 256.3) * easeOut(seg(lt, 5.2 + i * .4, 6.6 + i * .4));
+    const g = ctx.createLinearGradient(bx, 0, bx + bwMax, 0);
+    g.addColorStop(0, c); g.addColorStop(1, i === 0 ? TH.hot : TH.a4Dk);
+    ctx.fillStyle = g; rrect(bx, y, w, 26, 13); ctx.fill();
+    mono(lab, bx + w + 14, y + 20, { size:17, weight:700, color:TH.hiInk });
+    ctx.restore();
+  });
+}
+
+/* ================= SCENE 8 · OUTRO / SOURCES ================= */
+function sourceRow(x, y, w, name, desc, lt, at, accent){
+  const p = easeOut(seg(lt, at, at + .7));
+  if (p <= 0) return;
+  ctx.save(); ctx.globalAlpha = p; ctx.translate((1 - p) * -30, 0);
+  circle(x + 8, y - 6, 5, accent);
+  mono(name, x + 26, y, { size:18, weight:700, color:TH.hiInk });
+  txt(desc, x + 26, y + 28, { size:14, weight:400, color:dimA(.75) });
+  ctx.restore();
+}
+
+function drawOutro(lt, dur, t){
+  sceneKicker(T('otKicker'), T('otTitle'), lt);
+
+  // left: sources
+  card(64, 152, 880, 470, { accent:a1A(.7) });
+  chip(92, 178, 230, 38, a1A(.12), a1A(.45));
+  txt(T('otSourcesHead'), 207, 203, { size:16, weight:800, color:TH.a1Lt, align:'center', ls:2 });
+  sourceRow(96, 272, 800, 'update.code.visualstudio.com', T('otSrc1d'), lt, .4, TH.a1);
+  sourceRow(96, 352, 800, 'code.visualstudio.com/updates', T('otSrc2d'), lt, .7, TH.a1);
+  sourceRow(96, 432, 800, 'github.com/zed-industries/zed', T('otSrc3d'), lt, 1.0, TH.a4);
+  sourceRow(96, 512, 800, 'REPRO · dist_dataset.json', T('otSrc4d'), lt, 1.3, TH.a2);
+
+  // right: method
+  card(976, 152, 880, 470, { accent:a2A(.6) });
+  chip(1004, 178, 250, 38, a2A(.12), a2A(.4));
+  txt(T('otMethodHead'), 1129, 203, { size:16, weight:800, color:TH.a2Lt, align:'center', ls:2 });
+  T('otMethod').forEach((m, i) => {
+    const p = easeOut(seg(lt, .6 + i * .3, 1.3 + i * .3));
+    ctx.save(); ctx.globalAlpha = p; ctx.translate((1 - p) * 30, 0);
+    ctx.fillStyle = a2A(.75);
+    const bx = 1012, by = 274 + i * 56;
+    ctx.beginPath(); ctx.moveTo(bx, by - 6); ctx.lineTo(bx + 7, by + 1); ctx.lineTo(bx, by + 8); ctx.lineTo(bx - 7, by + 1); ctx.closePath(); ctx.fill();
+    txt(m, bx + 24, by + 6, { size:16, weight:500, color:hexA(TH.a2Lt, .9) });
+    ctx.restore();
+  });
+
+  // disclaimer bar
+  const dp = easeOut(seg(lt, 2.6, 3.6));
+  ctx.save(); ctx.globalAlpha = dp;
+  mono(T('otDisclaimer'), W / 2, 668, { size:13, color:a3A(.65), align:'center' });
+  ctx.restore();
+
+  // end card
+  const ep = easeOut(seg(lt, 3.4, 4.6));
+  if (ep > 0){
+    ctx.save(); ctx.globalAlpha = ep;
+    const pulse = .5 + .5 * Math.sin(t * 2.2);
+    txt('SIZE REPORT', 960, 770, { size:96, weight:900, color:inkA(.035), align:'center', ls:30, font:TH.fonts.display });
+    txt(T('otThanks'), 960, 778, { size:LANG === 'zh' ? 88 : 64, weight:900, color:TH.hiInk, align:'center', glow:blueA(.5), glowBlur:28 + pulse * 14, ls:LANG === 'zh' ? 0 : 6 });
+    mono('EP.01 · THE GROWING EDITOR · FIN', 960, 826, { size:15, color:dimA(.7), align:'center', ls:6 });
+    // pill row
+    const labels = T('otPills');
+    const pw = 150, gap = 34, total = labels.length * pw + (labels.length - 1) * gap;
+    labels.forEach((s, i) => {
+      const x = 960 - total / 2 + i * (pw + gap), y = 856, ph = 46;
+      rrect(x, y, pw, ph, 23);
+      ctx.fillStyle = i === 1 ? a3A(.14) : a1A(.10); ctx.fill();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = i === 1 ? a3A(.6) : a1A(.5); ctx.stroke();
+      txt(s, x + pw / 2, y + 30, { size:18, weight:700, color: i === 1 ? TH.a3Lt : TH.a1Lt, align:'center', ls:6 });
+    });
+    mono(T('otNext'), 960, 950, { size:14, color:dimA(.6), align:'center', ls:2 });
+    ctx.restore();
+  }
+  // fade to black at the very end
+  const fade = seg(lt, dur - 2.2, dur - .2);
+  if (fade > 0){ ctx.fillStyle = `rgba(2,6,23,${(fade * .92).toFixed(3)})`; ctx.fillRect(0, 0, W, H); }
+}
+</script>
+<script>
+/* ================= DISPATCHER & PLAYER ================= */
+const RENDER = {
+  intro: drawIntro, method: drawMethod, timeline: drawTimeline, spike: drawSpike,
+  zed: drawZed, why: drawWhy, board: drawBoard, outro: drawOutro
+};
+function draw(t){
+  t = clamp(t, 0, TOTAL - 1e-4);
+  drawBackground(t);
+  const sc = SCENES.find(s => t >= s.t0 && t < s.t1) || SCENES[SCENES.length - 1];
+  RENDER[sc.id](t - sc.t0, sc.t1 - sc.t0, t);
+  drawChrome(t, sc);
+}
+window.__renderAt = t => draw(t);
+window.__TOTAL = TOTAL;
+
+const audio = document.getElementById('narr');
+const playBtn = document.getElementById('playBtn');
+const playIcon = document.getElementById('playIcon');
+const muteBtn = document.getElementById('muteBtn');
+const volIcon = document.getElementById('volIcon');
+const fsBtn = document.getElementById('fsBtn');
+const timeLabel = document.getElementById('timeLabel');
+const seek = document.getElementById('seek');
+const seekFill = document.getElementById('seekFill');
+const seekTrack = document.getElementById('seekTrack');
+const controls = document.getElementById('controls');
+const docTitleMain = document.getElementById('docTitleMain');
+const ICON_PLAY = '<path d="M8 5v14l11-7z"/>';
+const ICON_PAUSE = '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>';
+const ICON_VOL = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/>';
+const ICON_MUTE = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.6 3l2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4-2.7-2.7z"/>';
+
+// chapter dots
+const chapterDots = [];
+function renderChapters(){
+  chapterDots.forEach(d => d.remove());
+  chapterDots.length = 0;
+  for (const sc of SCENES){
+    const dot = document.createElement('div');
+    dot.className = 'chap';
+    dot.style.left = (sc.t0 / TOTAL * 100) + '%';
+    dot.title = `${SCENE_NAMES[sc.id] || sc.id} · ${mmss(sc.t0)}`;
+    dot.addEventListener('click', ev => { ev.stopPropagation(); seekTo(sc.t0 + 0.001); });
+    seekTrack.appendChild(dot);
+    chapterDots.push(dot);
+  }
+}
+const langSel = document.getElementById('langSelect');
+function applyLangUI(){
+  document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+  docTitleMain.textContent = I18N[LANG].docTitle;
+  if (langSel) langSel.value = LANG;
+}
+function setLang(l){
+  if (l === LANG || (l !== 'en' && l !== 'zh')) return;
+  LANG = l;
+  SCENE_NAMES = I18N[LANG].sceneNames;
+  try { localStorage.setItem('size-report-lang', l); } catch (e) {}
+  applyLangUI();
+  renderChapters();
+  if (!isPlaying()) draw(audio.currentTime || 0);
+}
+if (langSel){
+  langSel.value = LANG;
+  langSel.addEventListener('change', () => setLang(langSel.value));
+}
+renderChapters();
+applyLangUI();
+
+const themeSel = document.getElementById('themeSelect');
+function setTheme(name){
+  if (!THEMES[name] || name === THEME) return;
+  applyTheme(name, true);
+  if (themeSel) themeSel.value = name;
+  if (!isPlaying()) draw(audio.currentTime || 0);
+}
+if (themeSel){
+  themeSel.value = THEME;
+  themeSel.addEventListener('change', () => setTheme(themeSel.value));
+}
+applyTheme(THEME, false);
+function isPlaying(){ return !audio.paused && !audio.ended; }
+function syncPlayIcon(){ playIcon.innerHTML = isPlaying() ? ICON_PAUSE : ICON_PLAY; }
+function seekTo(t){
+  audio.currentTime = clamp(t, 0, TOTAL - 0.001);
+  draw(audio.currentTime);
+  updateSeekUI();
+}
+function updateSeekUI(){
+  const t = clamp(audio.currentTime || 0, 0, TOTAL);
+  seekFill.style.width = (t / TOTAL * 100) + '%';
+  timeLabel.textContent = `${mmss(t)} / ${mmss(TOTAL)}`;
+}
+playBtn.addEventListener('click', () => { isPlaying() ? audio.pause() : audio.play(); syncPlayIcon(); });
+muteBtn.addEventListener('click', () => { audio.muted = !audio.muted; volIcon.innerHTML = audio.muted ? ICON_MUTE : ICON_VOL; });
+fsBtn.addEventListener('click', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.getElementById('stage-wrap').requestFullscreen().catch(() => {});
+});
+seek.addEventListener('click', ev => {
+  const r = seekTrack.getBoundingClientRect();
+  seekTo((ev.clientX - r.left) / r.width * TOTAL);
+});
+audio.addEventListener('ended', () => { syncPlayIcon(); draw(TOTAL - 0.001); });
+audio.addEventListener('play', syncPlayIcon);
+audio.addEventListener('pause', syncPlayIcon);
+document.addEventListener('keydown', ev => {
+  if (ev.code === 'Space'){ ev.preventDefault(); playBtn.click(); }
+  else if (ev.code === 'ArrowRight'){ seekTo((audio.currentTime || 0) + 5); }
+  else if (ev.code === 'ArrowLeft'){ seekTo((audio.currentTime || 0) - 5); }
+  else if (ev.key === 'm' || ev.key === 'M'){ muteBtn.click(); }
+  else if (ev.key === 'f' || ev.key === 'F'){ fsBtn.click(); }
+  else if (ev.key === 'l' || ev.key === 'L'){ setLang(LANG === 'en' ? 'zh' : 'en'); }
+  else if (ev.key >= '1' && ev.key <= '5'){ setTheme(['nova', 'paper', 'terminal', 'pop', 'noir'][Number(ev.key) - 1]); }
+});
+let hideTimer = 0;
+let controlsActivated = false;
+const stageWrap = document.getElementById('stage-wrap');
+
+function showControls(){
+  controls.classList.remove('hidden');
+  controls.classList.add('pinned');
+  clearTimeout(hideTimer);
+}
+
+function scheduleHide(){
+  if (!controlsActivated) return;
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => {
+    if (!controls.matches(':hover')) {
+      controls.classList.add('hidden');
+      controls.classList.remove('pinned');
+    }
+  }, 1200);
+}
+
+stageWrap.addEventListener('mousemove', (e) => {
+  if (!controlsActivated) {
+    showControls();
+    clearTimeout(hideTimer);
+    return;
+  }
+  const rect = controls.getBoundingClientRect();
+  if (e.clientY >= rect.top - 8) {
+    showControls();
+    scheduleHide();
+  } else {
+    if (!controls.matches(':hover')) {
+      controls.classList.add('hidden');
+      controls.classList.remove('pinned');
+    }
+  }
+});
+
+controls.addEventListener('mouseenter', () => {
+  if (!controlsActivated) {
+    controlsActivated = true;
+  }
+  showControls();
+  clearTimeout(hideTimer);
+  if (controlsActivated) {
+    scheduleHide();
+  }
+});
+
+controls.addEventListener('mouseleave', () => {
+  if (!controlsActivated) return;
+  scheduleHide();
+});
+
+if (new URLSearchParams(location.search).has('capture')) document.body.classList.add('capture');
+
+function frame(){
+  if (isPlaying()){ draw(audio.currentTime); updateSeekUI(); }
+  requestAnimationFrame(frame);
+}
+draw(0);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!isPlaying()) draw(audio.currentTime || 0); });
+requestAnimationFrame(frame);
+</script>
+<script>
+/* ================= SILENT CLOCK (mute/tts builds only) ================= */
+(() => {
+  const master = document.getElementById('narr');
+  if (!master) return;
+  // A silent 266 s WAV, generated in memory. It keeps the existing
+  // audio.currentTime / play / pause / seek / ended logic fully intact
+  // without embedding any narration bytes in the HTML.
+  const SR = 8000;                       // 8 kHz mono 16-bit
+  const n = Math.ceil(TOTAL * SR);
+  const bytes = 44 + n * 2;
+  const buf = new ArrayBuffer(bytes);
+  const dv = new DataView(buf);
+  const put = (off, str) => { for (let i = 0; i < str.length; i++) dv.setUint8(off + i, str.charCodeAt(i)); };
+  put(0, 'RIFF');
+  dv.setUint32(4, 36 + n * 2, true);
+  put(8, 'WAVE');
+  put(12, 'fmt ');
+  dv.setUint32(16, 16, true);
+  dv.setUint16(20, 1, true);             // PCM
+  dv.setUint16(22, 1, true);             // mono
+  dv.setUint32(24, SR, true);            // sample rate
+  dv.setUint32(28, SR * 2, true);        // byte rate
+  dv.setUint16(32, 2, true);             // block align
+  dv.setUint16(34, 16, true);            // bits per sample
+  put(36, 'data');
+  dv.setUint32(40, n * 2, true);
+  // samples stay zero: silence
+  master.src = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  master.load();
+  document.documentElement.dataset.audio = 'tts';
+})();
+</script>
+<script>
+/* ================= WEB SPEECH API NARRATION (tts build only) ================= */
+(() => {
+  const TTS_SCENES = [{"id":"intro","text":"Same app. 42 megabytes a decade ago. 256 today. Welcome to The Growing Editor. In this episode, real data answers one question: how exactly did VS Code's installer get this heavy? And along for the ride — Zed, the challenger, for a head-to-head.","audioAt":1.0,"t0":0,"t1":20},{"id":"method","text":"Ground rules first. One yardstick: the Windows x64 installer. For VS Code, we measure the win32-x64 system installer served by the official update server — starting at 1.14, June 2017, the first x64 build you can download — 132 stable releases, patches excluded. For Zed, we read the size field of the Zed-x86_64.exe asset in GitHub Releases — 134 stable releases, starting from 0.208.4 in October 2025. Two caveats: Zed's Windows build is just over a year old, so time ranges aren't comparable; and an installer's size is not the disk footprint after install.","audioAt":21.0,"t0":20,"t1":61},{"id":"timeline","text":"The big picture. 1.14: 42 megabytes. 1.32: first past 50. In 2021, 1.56 hits 80. In 2024, 1.90 crosses 100. And in 2026, things turn vertical — 158 in April, 200 in June, 252 by July. Latest, 1.145: 256.3 megabytes — 6.1 times larger in nine years, about 21 percent a year, up 214. Note the line was gentle until 2026. The cliff comes at the end.","audioAt":62.0,"t0":61,"t1":101},{"id":"spike","text":"Zoom into 2026. Start at 115.8 in October 2025, then 131 in March. April: 1.116 jumps nearly 17. May: two ten-plus jumps. June 24th: 1.126 crosses 200. July 22nd: 1.130 alone adds 36 — through 250. Thirteen months: 115.8 to 256.3. Up 121 percent. VS Code went weekly and shipped more built-in AI and agents — though Microsoft hasn't published an official installer-size breakdown.","audioAt":102.0,"t0":101,"t1":141},{"id":"zed","text":"Now Zed. Pure Rust, native rendering — no Electron, no Chromium. Windows got its first stable build in October 2025: 89.4 megabytes. It peaked at 104.6 in January 2026, then slid back — v1.25.2, October 21st, down 23.8 percent in one go. Latest: 64.8. Net change: down 27.5 percent. VS Code, same window: 115.8 to 256.3 — more than double.","audioAt":142.0,"t0":141,"t1":176},{"id":"why","text":"Why the gap? One: the runtime. VS Code rides on Electron — Chromium plus Node.js — so every Chromium upgrade lifts the whole package. Zed is a native Rust binary; that layer is simply gone. Two: the payload. More AI agents, language services and built-in extensions ship inside the default install. Three: the cadence. Monthly became weekly in 2026 — bytes traded for features. Zed's shrinking proves the trade can go the other way: leaner packaging, on-demand components.","audioAt":177.0,"t0":176,"t1":211},{"id":"board","text":"Scoreboard. 256.3 versus 64.8 megabytes — VS Code is about 3.96 times Zed, a 191.6 megabyte gap. VS Code: 6.1 times in nine years, about 21 percent a year — and more than double this year alone. Zed: down 27.5 percent in one year. Bigger doesn't mean better; smaller doesn't mean weaker. But an installer's size is an honest receipt for every architectural trade-off.","audioAt":212.0,"t0":211,"t1":241},{"id":"outro","text":"Sources: VS Code's official update server and release notes, and Zed's GitHub Releases — measured on November 4th, 2026, all against Windows x64. This is an independent measurement, not affiliated with Microsoft or Zed Industries. Installers are delta-compressed; your disk usage after install will differ. If you found this useful, like, coin and favorite — see you next time.","audioAt":242.0,"t0":241,"t1":266}];
+  const master = document.getElementById('narr');
+  const muteBtn = document.getElementById('muteBtn');
+  const synth = window.speechSynthesis;
+  const Utterance = window.SpeechSynthesisUtterance;
+  if (!master || !synth || !Utterance){
+    document.documentElement.dataset.tts = 'unsupported';
+    return;
+  }
+
+  let voice = null;
+  let lastKey = '';
+
+  function pickVoice(){
+    const langOf = v => (v.lang || '').toLowerCase().replace('_', '-');
+    const voices = synth.getVoices().filter(v => v && langOf(v).startsWith('en'));
+    if (!voices.length) return null;
+
+    // Edge can expose its online neural voices through getVoices() as
+    // "Microsoft ... Online (Natural) - English (United States)".
+    // Prefer those when the browser makes them available, then fall back
+    // to the same local voices used before.
+    const online = voices.filter(v => !v.localService || /online|natural/i.test(v.name || ''));
+    const onlineUS = online.filter(v => langOf(v).startsWith('en-us'));
+    const male = ['guy', 'andrew', 'brian', 'christopher', 'eric', 'roger', 'steffan', 'tony', 'davis', 'jason'];
+    const byName = (list, needle) => list.find(v => (v.name || '').toLowerCase().indexOf(needle) !== -1);
+
+    let v = byName(onlineUS, 'guy') || byName(online, 'guy');
+    if (!v) v = onlineUS.find(x => male.some(n => (x.name || '').toLowerCase().indexOf(n) !== -1));
+    if (!v) v = onlineUS[0] || online[0];
+
+    if (!v){
+      for (const name of ['microsoft guy', 'microsoft mark', 'microsoft david', 'google us english', 'samantha', 'alex']){
+        v = byName(voices, name);
+        if (v) break;
+      }
+    }
+    return v || voices.find(x => langOf(x) === 'en-us') || voices[0];
+  }
+  function refreshVoice(){
+    voice = pickVoice();
+    document.documentElement.dataset.voice = voice ? voice.name : 'default';
+  }
+  refreshVoice();
+  if (synth.addEventListener) synth.addEventListener('voiceschanged', refreshVoice);
+  else synth.onvoiceschanged = refreshVoice;
+
+  function cancelSpeech(){
+    lastKey = '';
+    try { synth.cancel(); } catch (e) {}
+  }
+
+  function speakScene(sc){
+    if (!sc || master.muted) return;
+    if (sc.id === lastKey) return;
+    lastKey = sc.id;
+    try { synth.cancel(); } catch (e) {}
+    const u = new Utterance(sc.text);
+    u.lang = 'en-US';
+    u.rate = 1.08;
+    u.pitch = 1;
+    u.volume = 1;
+    if (voice) u.voice = voice;
+    try { synth.speak(u); } catch (e) { lastKey = ''; }
+  }
+
+  function activeScene(t){
+    // Narration begins at audioAt and must stop at the scene end.
+    return TTS_SCENES.find(s => t >= s.audioAt && t < s.t1) || null;
+  }
+
+  function sync(){
+    // Do not cancel just because the clock is momentarily paused during a
+    // seek. Real pause/end/mute are handled by the explicit listeners below.
+    if (master.paused || master.ended || master.muted) return;
+    const sc = activeScene(master.currentTime || 0);
+    if (!sc){
+      if (lastKey) cancelSpeech();
+      return;
+    }
+    speakScene(sc);
+  }
+
+  master.addEventListener('play', sync);
+  master.addEventListener('pause', cancelSpeech);
+  // Do not clear lastKey here: the rAF loop may already have spoken the
+  // scene at the new position. sync() itself switches scenes when needed.
+  master.addEventListener('seeked', sync);
+  master.addEventListener('ended', cancelSpeech);
+
+  // The original handler flips master.muted first; this listener runs after it.
+  muteBtn.addEventListener('click', () => {
+    if (master.muted) cancelSpeech();
+    else { lastKey = ''; sync(); }
+  });
+
+  window.addEventListener('pagehide', cancelSpeech);
+  window.addEventListener('beforeunload', cancelSpeech);
+
+  function loop(){
+    sync();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  document.documentElement.dataset.tts = 'ready';
+})();
+</script>
+</body>
+</html>

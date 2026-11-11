@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f3f5ee">
+  <meta name="description" content="One kernel, a world of possibilities. An interactive, three-dimensional field guide to Linux distributions, inspired by Petrisha's A Layman's Guide to Linux Distros.">
+  <title>Linux, your way. | The Linux Explorer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23e6edda'/%3E%3Cpath d='M16 25V14M16 20 8 14V9m8 11 8-6V9' fill='none' stroke='%23608149' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='8' r='2.6' fill='%23608149'/%3E%3Ccircle cx='24' cy='8' r='2.6' fill='%23608149'/%3E%3Ccircle cx='16' cy='12' r='2.6' fill='%23608149'/%3E%3Ccircle cx='16' cy='25' r='3' fill='%23608149'/%3E%3C/svg%3E">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --paper: #f3f5ee;
+      --ink: #283b30;
+      --muted: #7b8378;
+      --green: #65884d;
+      --line: #dce2d5;
+      --soft: #e7eddc;
+      --white: #fcfdf8;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: Arial, Helvetica, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    button, select, a { -webkit-tap-highlight-color: transparent; }
+    button, select { font: inherit; }
+    button, a, select { touch-action: manipulation; }
+    button { cursor: pointer; }
+    button { color: inherit; }
+    button:disabled { cursor: not-allowed; }
+    a { color: inherit; }
+    button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--green); outline-offset: 5px; }
+    button svg, a svg { flex-shrink: 0; }
+    ::selection { background: #d5e5bd; color: #253c2c; }
+    .svg-library { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .logo-icon { width: 24px; height: 24px; fill: currentColor; }
+    .mono { font-family: "Courier New", Courier, monospace; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .site-header { height: 88px; margin: 0 48px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); position: relative; z-index: 5; }
+    .wordmark { text-decoration: none; display: inline-flex; align-items: center; gap: 11px; font-size: 20px; font-weight: 700; letter-spacing: -.8px; }
+    .wordmark-symbol { width: 29px; height: 31px; color: #608149; }
+    .wordmark .slash { margin: 0 5px 0 7px; color: #a3ad99; font-weight: 400; }
+    .wordmark .wordmark-light { font-weight: 400; }
+    .main-nav { display: flex; gap: 33px; height: 100%; align-items: center; margin-left: 30px; }
+    .nav-link { border: 0; background: none; position: relative; font-size: 12px; color: #7b8379; padding: 13px 0; transition: color .2s; }
+    .nav-link:hover, .nav-link.active { color: var(--ink); }
+    .nav-link.active::before { content: ""; width: 4px; height: 4px; position: absolute; border-radius: 50%; left: -11px; top: 19px; background: var(--green); }
+    .quiz-trigger { display: inline-flex; align-items: center; gap: 22px; padding: 12px 16px; border-radius: 6px; background: transparent; border: 1px solid #ccd5c4; font-size: 12px; font-weight: 600; transition: background .2s, border-color .2s; }
+    .quiz-trigger .icon { width: 15px; height: 15px; }
+    .quiz-trigger:hover { background: #e7edde; border-color: #a7b69a; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .mobile-nav-toggle { display: none; align-items: center; justify-content: center; width: 29px; height: 36px; background: none; border: 0; padding: 3px; }
+    .mobile-menu { display: flex; flex-direction: column; }
+    .mobile-menu button { background: none; border: 0; border-bottom: 1px solid var(--line); text-align: left; padding: 17px 0; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+    .workspace { min-height: max(742px, calc(100svh - 150px)); position: relative; isolation: isolate; overflow: hidden; }
+    .sidebar { position: relative; z-index: 3; width: 342px; margin-left: 5.3%; padding-top: 36px; padding-bottom: 24px; pointer-events: none; }
+    .sidebar > * { pointer-events: auto; }
+    .eyebrow { display: flex; align-items: center; gap: 10px; font-size: 9px; line-height: 16px; letter-spacing: 1.65px; font-family: "Courier New", Courier, monospace; font-weight: 600; color: #77806f; }
+    .eyebrow::before { content: ""; width: 19px; height: 1px; background: #8eaa76; }
+    h1 { font-size: clamp(63px, 5.25vw, 78px); line-height: .99; font-weight: 500; letter-spacing: -4.9px; margin: 18px 0 18px -4px; }
+    h1 .second-line { display: block; color: #76915e; }
+    .intro-description { margin: 0; color: #74806b; font-size: 13px; line-height: 1.75; letter-spacing: .02px; }
+    .control-panel { margin-top: 28px; }
+    .step-label { margin: 0 0 12px; display: flex; align-items: center; gap: 9px; font-family: "Courier New", Courier, monospace; font-size: 9px; font-weight: 600; letter-spacing: 1.4px; color: #718064; }
+    .step-label .step-number { color: #618147; letter-spacing: 0; }
+    .step-label .step-slash { color: #b6bdae; font-weight: 400; }
+    .family-tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3px; border-bottom: 1px solid #d8dfd1; }
+    .family-tab { min-width: 0; display: flex; justify-content: center; align-items: center; gap: 8px; position: relative; border: none; border-radius: 5px 5px 0 0; padding: 12px 8px 13px; background: transparent; font-size: 12px; color: #728068; transition: background .25s, color .25s; }
+    .family-tab .logo-icon { height: 21px; width: 21px; }
+    .family-tab:hover { background: #e9eddf; color: #405237; }
+    .family-tab[aria-selected="true"] { background: #e6edda; color: #4d6c36; font-weight: 600; }
+    .family-tab[aria-selected="true"]::after { content: ""; position: absolute; height: 2px; left: 0; right: 0; bottom: -1px; background: #78945a; }
+    .distro-step { margin-top: 22px; }
+    .distro-picker { display: flex; align-items: center; position: relative; height: 60px; background: #f9faf5; border: 1px solid #d7dece; border-radius: 7px; transition: border-color .2s, box-shadow .2s; }
+    .distro-picker:hover { border-color: #a9b99a; }
+    .distro-picker:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px #6b8d4f12; }
+    .selected-distro-icon { position: absolute; left: 15px; width: 34px; height: 34px; border-radius: 50%; background: #658b4e; color: white; display: flex; align-items: center; justify-content: center; pointer-events: none; transition: background .3s; }
+    .selected-distro-icon .logo-icon { width: 31px; height: 31px; }
+    #distro-select { appearance: none; width: 100%; height: 100%; padding: 0 43px 0 63px; border: 0; background: transparent; outline: 0; color: var(--ink); font-size: 18px; font-weight: 500; letter-spacing: -.35px; cursor: pointer; }
+    #distro-select option { color: var(--ink); background: #f9faf5; font-size: 15px; }
+    .picker-chevron { width: 16px; height: 16px; position: absolute; right: 16px; color: #7b8571; pointer-events: none; }
+    .distro-description { min-height: 44px; margin: 15px 0 14px; font-size: 12px; color: #738068; line-height: 1.8; max-width: 324px; }
+    .distro-facts { margin: 0; font-size: 11px; }
+    .distro-fact { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-top: 1px solid #e0e5d8; }
+    .distro-fact dt { color: #79836f; }
+    .distro-fact dd { margin: 0; color: #506046; font-weight: 500; text-align: right; }
+    .primary-button { border: 1px solid #2d4232; border-radius: 6px; width: 100%; padding: 15px 18px; background: #2d4232; color: #f7f9f1; font-size: 12px; font-weight: 500; letter-spacing: .1px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; transition: background .2s, box-shadow .2s; }
+    .primary-button:hover { background: #405a38; border-color: #405a38; box-shadow: 0 4px 12px #283c2910; }
+    .primary-button .icon { width: 16px; height: 16px; transition: transform .2s; }
+    .primary-button:hover .icon { transform: translateX(3px); }
+    #details-button { margin-top: 18px; }
+    .selection-note { display: flex; gap: 6px; justify-content: center; align-items: center; margin: 12px 0 0; font-size: 9px; color: #939887; }
+    .selection-note .icon { width: 12px; height: 12px; }
+    .scene-stage { position: absolute; left: max(33%, calc(5.3% + 360px)); right: 0; top: 0; bottom: 0; min-width: 0; z-index: 1; outline: none; }
+    #scene-canvas { width: 100%; height: 100%; display: block; position: absolute; inset: 0; opacity: 0; transition: opacity .9s; touch-action: pan-y; }
+    #scene-canvas:focus-visible { outline-offset: -4px; }
+    .tool-button[hidden] { display: none; }
+    #scene-canvas[hidden], #node-labels[hidden] { display: none; }
+    .scene-stage:not(.is-ready) #scene-canvas { pointer-events: none; }
+    .scene-stage:not(.is-ready) #node-labels { display: none; }
+    .scene-stage.is-ready #scene-canvas { opacity: 1; }
+    .scene-stage.is-ready #map-fallback { opacity: 0; pointer-events: none; }
+    .scene-eyebrow { position: absolute; top: 39px; right: 48px; display: flex; align-items: center; gap: 8px; font-size: 8px; color: #8d9784; letter-spacing: 1.45px; z-index: 3; pointer-events: none; }
+    .status-dot { width: 5px; height: 5px; border-radius: 50%; background: #89a76c; box-shadow: 0 0 0 3px #89a76c13; }
+    #node-labels { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+    .node-label { position: absolute; left: 0; top: 0; white-space: nowrap; transform: translate3d(-9999px, -9999px, 0); will-change: transform; border: 0; padding: 5px 9px; color: #596651; font-size: 12px; font-weight: 500; letter-spacing: -.2px; background: none; pointer-events: auto; opacity: 0; transition: color .2s, opacity .6s; text-shadow: 0 1px 6px #f3f5eebb; }
+    .is-ready .node-label { opacity: 1; }
+    .node-label:hover { color: #253e26; }
+    .node-label.selected { color: #426733; font-weight: 700; }
+    .node-label.selected::before { content: ""; display: inline-block; width: 4px; height: 4px; margin: 0 5px 2px 0; background: #729d4d; border-radius: 50%; }
+    .node-label .node-subtitle { font-family: "Courier New", monospace; display: block; letter-spacing: 1.05px; font-size: 7px; color: #99a08e; margin-top: 5px; font-weight: 400; }
+    .scene-instructions { position: absolute; bottom: 42px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; gap: 9px; white-space: nowrap; color: #8a9380; font-size: 9px; z-index: 3; pointer-events: none; }
+    .scene-instructions .icon { width: 14px; height: 14px; margin-right: 2px; }
+    .instruction-divider { width: 2px; height: 2px; border-radius: 50%; background: #aeb7a0; }
+    .view-tools { display: flex; align-items: center; gap: 1px; position: absolute; right: 48px; bottom: 76px; padding: 5px; border: 1px solid #dce2d2; border-radius: 7px; z-index: 4; background: #f8faf2e6; backdrop-filter: blur(10px); }
+    .tool-button { display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 32px; height: 32px; border: 0; border-radius: 4px; background: transparent; color: #7b8a6c; transition: background .2s, color .2s; }
+    .tool-button .icon { width: 16px; height: 16px; }
+    .tool-button:hover, .tool-button[aria-pressed="true"] { color: #3e602e; background: #e4edda; }
+    .tool-button:disabled { opacity: .35; }
+    .tool-divider { width: 1px; height: 15px; background: #dce3d2; margin: 0 4px; }
+    #map-fallback { width: 100%; height: 100%; position: absolute; inset: 0; transition: opacity .6s; }
+    #map-fallback svg { display: block; width: 100%; height: 100%; }
+    .fallback-node { cursor: pointer; outline: none; }
+    .fallback-node .fallback-ring { stroke: transparent; transition: stroke .3s; }
+    .fallback-node.is-selected .fallback-ring, .fallback-node:focus-visible .fallback-ring { stroke: #80a658; }
+    .fallback-node:hover .fallback-disc { filter: brightness(1.06); }
+    .site-footer { min-height: 62px; margin: 0 48px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 18px; font-size: 9px; color: #8b9382; position: relative; z-index: 4; }
+    .source-link { display: inline-flex; align-items: center; gap: 7px; text-decoration: none; }
+    .source-link span { color: #627255; border-bottom: 1px solid #bdc9b0; }
+    .source-link:hover span { color: #3b5d2b; border-color: #6c8c55; }
+    .source-link .icon { width: 12px; height: 12px; }
+    .footer-motto { display: flex; align-items: center; gap: 8px; letter-spacing: .15px; }
+    .footer-motto::before { content: ""; width: 4px; height: 4px; border: 1px solid #92a17f; border-radius: 50%; }
+    .scene-stage:fullscreen { position: fixed; inset: 0; margin: 0; width: 100vw; height: 100dvh; background: var(--paper); }
+    .scene-stage:fullscreen .scene-eyebrow { top: 36px; }
+    .scene-stage:fullscreen .view-tools { bottom: 38px; }
+    .scene-stage:fullscreen .scene-instructions { bottom: 50px; }
+    dialog { color: var(--ink); width: min(560px, calc(100vw - 32px)); max-height: min(86svh, 820px); margin: auto; padding: 33px; background: #f8faf3; border: 1px solid #d7dfce; border-radius: 15px; box-shadow: 0 25px 100px #1b302026; overscroll-behavior: contain; }
+    dialog::backdrop { background: #24352b48; backdrop-filter: blur(8px); }
+    dialog[open] { animation: modal-in .25s ease-out; }
+    dialog.wide { width: min(945px, calc(100vw - 32px)); }
+    .modal-topline { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 17px; }
+    .modal-kicker { font-family: "Courier New", monospace; font-size: 9px; font-weight: 600; letter-spacing: 1.7px; color: #8b9680; }
+    .modal-close { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; background: #e9eede; border: 0; border-radius: 50%; color: #69775c; }
+    .modal-close:hover { background: #dce6cf; }
+    .modal-close .icon { width: 15px; height: 15px; }
+    .modal-title { font-size: 34px; font-weight: 500; line-height: 1.1; letter-spacing: -1.6px; margin: 0 0 22px; }
+    .modal-body p { color: #6c7961; line-height: 1.8; font-size: 13px; }
+    .modal-body h3 { margin: 22px 0 7px; font-size: 15px; font-weight: 500; letter-spacing: -.2px; }
+    .modal-body h3 + p { margin-top: 0; }
+    .modal-body p + p { margin-top: 12px; }
+    .modal-body .guide-source { margin-top: 22px; }
+    .guide-source a { text-decoration: underline; }
+    .modal-body .primary-button { margin-top: 25px; }
+    .detail-brand { display: flex; align-items: center; gap: 15px; padding: 0 0 23px; margin-bottom: 19px; border-bottom: 1px solid var(--line); }
+    .detail-brand-icon { width: 59px; height: 59px; color: white; display: flex; align-items: center; justify-content: center; border-radius: 13px; }
+    .detail-brand-icon .logo-icon { width: 50px; height: 50px; }
+    .detail-tagline { font-size: 15px; letter-spacing: -.2px; margin-bottom: 7px; }
+    .detail-lineage { font-size: 10px; line-height: 1.6; color: #929a85; }
+    .detail-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 22px 0; }
+    .detail-facts dt { font-family: "Courier New", monospace; font-size: 9px; letter-spacing: 1px; color: #929d87; margin-bottom: 6px; }
+    .detail-facts dd { margin: 0; font-size: 12px; color: #455a3b; }
+    .command-row { background: #eaf0e1; border: 1px solid #dde6d1; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 13px; }
+    .command-row code { font-size: 11px; color: #52703e; overflow-wrap: anywhere; }
+    .copy-button { border: 0; background: transparent; color: #718563; padding: 3px; display: inline-flex; align-items: center; gap: 5px; font-size: 10px; }
+    .copy-button .icon { width: 14px; height: 14px; }
+    .modal-body .command-note { font-size: 10px; color: #929d84; margin-top: 7px; }
+    .compare-intro { max-width: 560px; margin-bottom: 24px; }
+    .table-scroll { overflow-x: auto; margin: 0 -5px; padding: 0 5px 5px; }
+    .compare-table { width: 100%; min-width: 710px; border-collapse: collapse; table-layout: fixed; }
+    .compare-table th, .compare-table td { text-align: left; vertical-align: top; padding: 16px 12px; border-bottom: 1px solid #dfe6d6; font-size: 11px; line-height: 1.6; font-weight: 400; color: #6f7f62; }
+    .compare-table th:first-child, .compare-table td:first-child { width: 105px; color: #98a08e; padding-left: 0; font-size: 10px; }
+    .compare-table thead th { padding-top: 0; }
+    .compare-name { display: block; margin-top: 7px; font-size: 16px; font-weight: 500; letter-spacing: -.5px; color: #384d2e; }
+    .compare-logo { display: inline-flex; width: 34px; height: 34px; border-radius: 50%; align-items: center; justify-content: center; color: white; }
+    .compare-logo .logo-icon { width: 29px; height: 29px; }
+    .compare-table tfoot td { border: 0; padding-bottom: 0; }
+    .compare-select { display: flex; align-items: center; gap: 12px; padding: 0; background: transparent; border: 0; color: #54773d; font-size: 11px; }
+    .compare-select:hover { color: #2c4920; }
+    .compare-select .icon { width: 13px; height: 13px; }
+    .modal-body .compare-footnote { margin: 25px 0 0; font-size: 10px; color: #9aa28d; }
+    .compare-extra { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-top: 24px; padding: 15px 18px; background: #eef3e6; border: 1px solid #dde6d1; border-radius: 10px; }
+    .compare-extra .compare-logo { flex-shrink: 0; }
+    .modal-body .compare-extra p { flex: 1 1 240px; margin: 0; font-size: 11px; line-height: 1.7; }
+    .compare-extra strong { color: #384d2e; font-weight: 600; }
+    .compare-extra .compare-select { flex: none; white-space: nowrap; }
+    .guide-source { display: block; margin-top: 22px; border-top: 1px solid var(--line); padding-top: 20px; }
+    .guide-source a { color: #5e7b45; text-underline-offset: 4px; }
+    .quiz-progress { display: flex; gap: 5px; margin: 23px 0 12px; }
+    .quiz-progress span { height: 3px; flex: 1; background: #dfe7d3; border-radius: 2px; }
+    .quiz-progress span.complete { background: #85a266; }
+    .quiz-count { color: #8e9a7f; font-size: 9px; letter-spacing: 1px; }
+    .modal-body .quiz-question { font-size: 21px; line-height: 1.35; margin: 20px 0 20px; letter-spacing: -.6px; }
+    .quiz-answers { display: flex; flex-direction: column; gap: 10px; }
+    .quiz-answer { text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 15px; border: 1px solid #dce4d2; background: #f7f9f1; padding: 17px 16px; border-radius: 7px; font-size: 13px; transition: border-color .2s, background .2s; }
+    .quiz-answer::after { content: ""; width: 13px; height: 13px; border: 1px solid #bfccaf; border-radius: 50%; flex-shrink: 0; }
+    .quiz-answer:hover { border-color: #92a67c; }
+    .quiz-answer[aria-pressed="true"] { border-color: #88a26c; background: #eaf1df; color: #486334; }
+    .quiz-answer[aria-pressed="true"]::after { border: 4px solid #75955a; background: #edf5e0; }
+    .quiz-navigation { display: flex; gap: 15px; align-items: center; margin-top: 24px; }
+    .quiz-back { background: transparent; border: 0; padding: 10px 0; font-size: 12px; color: #819070; }
+    .modal-body .quiz-next { margin: 0 0 0 auto; width: 155px; }
+    .quiz-next:disabled { opacity: .35; box-shadow: none; }
+    .quiz-result-icon { display: flex; align-items: center; justify-content: center; width: 74px; height: 74px; border-radius: 50%; color: white; margin: 8px 0 20px; }
+    .quiz-result-icon .logo-icon { width: 63px; height: 63px; }
+    .modal-body .quiz-result-name { font-size: 30px; letter-spacing: -1px; margin: 10px 0 12px; }
+    .quiz-restart { display: block; margin: 17px auto 0; border: 0; background: none; padding: 5px; color: #7f9270; font-size: 11px; text-decoration: underline; text-underline-offset: 4px; }
+    #toast { position: fixed; bottom: 25px; left: 50%; transform: translate(-50%,12px); background: #2d4232; color: #f5f8ec; padding: 12px 18px; border-radius: 6px; font-size: 12px; z-index: 20; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: calc(100vw - 32px); text-align: center; }
+    #toast.visible { opacity: 1; transform: translate(-50%,0); }
+    .intro { animation: settle-in .75s both; }
+    .control-panel { animation: settle-in .8s .1s both; }
+    .site-header { animation: settle-in .7s both; }
+    .content-change { animation: content-in .35s both; }
+    @keyframes settle-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes content-in { from { opacity: .25; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes modal-in { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+    @media (min-width: 1600px) {
+      .sidebar { padding-top: 65px; width: 367px; margin-left: 6%; }
+      .control-panel { margin-top: 40px; }
+      .scene-stage { left: max(31%, calc(6% + 385px)); }
+      .scene-eyebrow { top: 60px; }
+      .intro-description { font-size: 15px; }
+      .distro-description { font-size: 13px; }
+    }
+    @media (max-width: 1150px) {
+      .site-header { margin: 0 32px; height: 78px; }
+      .sidebar { width: 305px; margin-left: 4%; padding-top: 42px; }
+      h1 { font-size: 69px; }
+      .workspace { min-height: max(739px, calc(100svh - 140px)); }
+      .scene-stage { left: max(33%, calc(4% + 320px)); }
+      .scene-eyebrow, .view-tools { right: 32px; }
+      .main-nav { gap: 25px; margin-left: 0; }
+      .site-footer { margin: 0 32px; }
+      .scene-instructions { left: 52%; font-size: 8px; gap: 7px; }
+    }
+    @media (max-width: 850px) {
+      .site-header { height: 75px; margin: 0 25px; }
+      .main-nav { gap: 20px; }
+      .wordmark { font-size: 18px; gap: 8px; }
+      .wordmark-symbol { width: 24px; }
+      .quiz-trigger { font-size: 11px; padding: 10px 12px; gap: 12px; }
+      .workspace { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+      .sidebar { display: contents; }
+      .intro { order: 1; padding: 38px 30px 0; }
+      h1 { font-size: 65px; line-height: 1.05; letter-spacing: -3.8px; margin: 15px 0 12px -2px; }
+      h1 .second-line { display: inline; }
+      .intro-description { font-size: 13px; }
+      .intro-description br { display: none; }
+      .scene-stage { position: relative; left: auto; right: auto; top: auto; bottom: auto; order: 2; width: 100%; height: 535px; margin-top: 3px; }
+      .scene-eyebrow { top: 20px; right: 30px; font-size: 7px; }
+      .view-tools { bottom: 32px; right: 30px; }
+      .scene-instructions { bottom: 9px; font-size: 8px; left: 50%; }
+      .control-panel { order: 3; width: calc(100% - 60px); max-width: 580px; margin: 23px auto 38px; position: relative; z-index: 3; }
+      .family-tab { padding: 14px; }
+      .distro-description { max-width: none; min-height: 0; font-size: 13px; }
+      .distro-facts { font-size: 12px; }
+      .selection-note { font-size: 10px; }
+      .site-footer { margin: 0 30px; min-height: 72px; }
+      .footer-motto { display: none; }
+      .source-link { font-size: 10px; }
+    }
+    @media (max-width: 680px) {
+      .main-nav { display: none; }
+      .mobile-nav-toggle { display: inline-flex; }
+      .header-actions { gap: 5px; }
+    }
+    @media (max-width: 560px) {
+      .site-header { margin: 0 22px; height: 69px; }
+      .wordmark { font-size: 18px; }
+      .wordmark .slash { margin-left: 4px; margin-right: 4px; }
+      .quiz-trigger { gap: 9px; font-size: 10px; }
+      .intro { padding: 30px 24px 0; }
+      .eyebrow { font-size: 8px; letter-spacing: 1.2px; }
+      h1 { font-size: clamp(38px, 10.7vw, 62px); letter-spacing: -2.5px; margin: 14px 0 12px; white-space: nowrap; }
+      .intro-description { font-size: 12px; line-height: 1.75; max-width: 290px; }
+      .scene-stage { height: 395px; margin-top: 14px; }
+      .scene-eyebrow { right: 24px; top: 8px; }
+      .view-tools { right: 23px; bottom: 35px; padding: 3px; }
+      .tool-button { width: 28px; height: 28px; }
+      .tool-button .icon { width: 14px; height: 14px; }
+      .scene-instructions { bottom: 8px; }
+      .node-label { font-size: 10px; }
+      .node-label .node-subtitle { font-size: 6px; }
+      .control-panel { width: calc(100% - 48px); margin-top: 24px; }
+      .distro-step { margin-top: 24px; }
+      .distro-picker { height: 63px; }
+      .site-footer { margin: 0 24px; }
+      .source-link { display: block; line-height: 1.9; max-width: 290px; font-size: 9px; }
+      .source-link .icon { display: inline-block; vertical-align: middle; }
+      dialog { padding: 23px; border-radius: 12px; max-height: 89svh; }
+      .modal-title { font-size: 30px; }
+      .modal-body p { font-size: 12px; }
+      .detail-facts { gap: 10px; }
+      .modal-body .quiz-question { font-size: 19px; }
+    }
+    @media (max-width: 360px) {
+      .site-header { margin: 0 16px; }
+      .wordmark { font-size: 16px; gap: 5px; }
+      .wordmark-symbol { width: 21px; }
+      .quiz-trigger { padding: 9px; gap: 6px; }
+      .quiz-trigger .icon { width: 12px; height: 12px; }
+    }
+    @media (min-width: 851px) and (max-height: 900px) {
+      .site-header { height: 72px; }
+      .workspace { min-height: calc(100svh - 126px); }
+      .sidebar { padding-top: 26px; padding-bottom: 20px; }
+      .eyebrow { line-height: 14px; font-size: 8px; }
+      h1 { font-size: 62px; margin-top: 14px; margin-bottom: 14px; letter-spacing: -3.6px; }
+      .intro-description { font-size: 12px; line-height: 1.7; }
+      .control-panel { margin-top: 20px; }
+      .step-label { font-size: 8px; margin-bottom: 9px; }
+      .family-tab { padding-top: 10px; padding-bottom: 10px; }
+      .distro-step { margin-top: 18px; }
+      .distro-picker { height: 56px; }
+      .distro-description { font-size: 11px; margin-top: 13px; margin-bottom: 12px; min-height: 40px; }
+      .distro-fact { padding-top: 7px; padding-bottom: 7px; }
+      #details-button { margin-top: 15px; padding-top: 13px; padding-bottom: 13px; }
+      .selection-note { margin-top: 10px; }
+      .site-footer { min-height: 54px; }
+      .scene-eyebrow { top: 29px; }
+      .view-tools { bottom: 59px; }
+      .scene-instructions { bottom: 27px; }
+    }
+    @media (min-width: 851px) and (max-height: 740px) {
+      .sidebar { padding-top: 18px; padding-bottom: 16px; }
+      h1 { font-size: 52px; letter-spacing: -3px; margin-top: 10px; margin-bottom: 10px; }
+      .intro-description { line-height: 1.6; }
+      .control-panel { margin-top: 16px; }
+      .distro-step { margin-top: 14px; }
+      .distro-picker { height: 52px; }
+      .selection-note { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><path d="M6 18 18 6M6 6h12v12"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 .9 6M4 4v6h6"/></symbol>
+      <symbol id="i-orbit" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="5" transform="rotate(-30 12 12)"/><circle cx="12" cy="12" r="2.4"/><path d="m18 3 1 4 4-1"/></symbol>
+      <symbol id="i-fullscreen" viewBox="0 0 24 24"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></symbol>
+      <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12V5a2 2 0 0 1 4 0v5-7a2 2 0 0 1 4 0v8-5a2 2 0 0 1 4 0v9c0 5-3 7-7 7-3 0-5-2-6-4l-4-6a2 2 0 0 1 3-2l2 2Z"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 8V3H3v13h5"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+      <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6C9 3 5 3 2 4v15c3-1 7-1 10 2 3-3 7-3 10-2V4c-3-1-7-1-10 2Zm0 0v15"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 8h16M4 16h16"/></symbol>
+      <symbol id="logo-debian" viewBox="0 0 100 100"><path d="M53 48c11 3 15-9 9-16-8-9-23-2-24 10-2 15 13 24 27 16 20-11 16-38-3-45-22-9-47 8-47 32 0 23 17 38 39 41" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round"/></symbol>
+      <symbol id="logo-mint" viewBox="0 0 100 100"><path d="M23 24v35c0 13 8 20 22 20h21c13 0 20-8 20-20V46c0-12-7-19-17-19-6 0-11 3-14 7-3-4-8-7-14-7h-7v35h10V39h2c4 0 6 3 6 8v15h10V47c0-5 2-8 6-8s7 3 7 8v12c0 6-3 9-10 9H45c-8 0-12-4-12-10V24Z"/></symbol>
+      <symbol id="logo-arch" viewBox="0 0 100 100"><path fill-rule="evenodd" d="m50 10 35 77-23-13c1-4 1-7 0-10-2-5-6-8-12-8s-10 3-12 8c-1 3-1 6 0 10L15 87l17-37 14 8-10-17Zm0 0"/></symbol>
+      <symbol id="logo-fedora" viewBox="0 0 100 100"><path d="M69 16H57c-16 0-25 10-25 25v21c0 6-3 10-9 10s-10-4-10-10 4-10 10-10h36V41H24C11 41 2 50 2 63s9 22 22 22 22-9 22-23V42c0-10 4-15 13-15h10Z" transform="translate(12 0)"/></symbol>
+      <symbol id="logo-ubuntu" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="9"><path d="M40 29a23 23 0 0 1 30 11M73 50a23 23 0 0 1-20 23M41 71a23 23 0 0 1-14-29"/></g><circle cx="50" cy="17" r="8"/><circle cx="79" cy="67" r="8"/><circle cx="21" cy="67" r="8"/></symbol>
+      <symbol id="logo-cachyos" viewBox="0 0 100 100"><path d="M75 20H42L17 49l25 30h34L58 59H46L37 49l9-10h13Z"/><path d="m68 41 17 19-15 18-8-10 7-8-9-10Z" opacity=".6"/></symbol>
+      <symbol id="logo-rhel" viewBox="0 0 100 100"><path d="M31 49C30.5 40 32 34 37 30C41 25.5 46 28 50 29.5C54 28 59 25.5 63 30C68 34 69.5 40 69 49C56 52.5 44 52.5 31 49Z"/><path d="M31 49C44 52.5 56 52.5 69 49L69 56.5C56 60 44 60 31 56.5Z" opacity=".42"/><path d="M8 60C8 52.5 18 54 27 57.5C40 62.5 60 62.5 73 57.5C82 54 92 52.5 92 60C92 68 73 72 50 72C27 72 8 68 8 60Z"/></symbol>
+      <symbol id="logo-linux" viewBox="0 0 100 100"><ellipse cx="50" cy="57" rx="28" ry="35"/><circle cx="50" cy="28" r="19"/><ellipse cx="50" cy="61" rx="19" ry="24" fill="#f5f5e9"/><ellipse cx="43" cy="28" rx="5" ry="7" fill="#f5f5e9"/><ellipse cx="57" cy="28" rx="5" ry="7" fill="#f5f5e9"/><circle cx="44" cy="28" r="2" fill="#26352e"/><circle cx="56" cy="28" r="2" fill="#26352e"/><path d="m42 36 8 8 8-8Z" fill="#ddb36c"/><ellipse cx="32" cy="87" rx="14" ry="7" fill="#ddb36c"/><ellipse cx="68" cy="87" rx="14" ry="7" fill="#ddb36c"/></symbol>
+    </defs>
+  </svg>
+
+  <header class="site-header">
+    <a class="wordmark" href="#" id="home-link" aria-label="Linux Explorer home">
+      <svg class="wordmark-symbol" viewBox="0 0 32 34" fill="none" aria-hidden="true"><path d="M16 28V13M16 20 5 13V6m11 14 11-7V6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="5" cy="5" r="3" fill="currentColor"/><circle cx="27" cy="5" r="3" fill="currentColor"/><circle cx="16" cy="11" r="3" fill="currentColor"/><circle cx="16" cy="29" r="3.5" fill="currentColor"/></svg>
+      <span>linux<span class="slash">/</span><span class="wordmark-light">explorer</span></span>
+    </a>
+    <nav class="main-nav" aria-label="Main navigation">
+      <button class="nav-link active" id="explorer-link" aria-current="page">Explorer</button>
+      <button class="nav-link" data-open="compare">Compare distros</button>
+      <button class="nav-link" data-open="guide">The field guide</button>
+    </nav>
+    <div class="header-actions"><button class="quiz-trigger" data-open="quiz">Find my distro <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg></button><button class="mobile-nav-toggle" data-open="menu" aria-label="Open navigation"><svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg></button></div>
+  </header>
+
+  <main class="workspace" id="explorer">
+    <aside class="sidebar" aria-label="Choose your Linux distribution">
+      <div class="intro">
+        <div class="eyebrow">A FIELD GUIDE TO OPEN SOURCE</div>
+        <h1>Linux, <span class="second-line">your way.</span></h1>
+        <p class="intro-description">Different roots. A shared kernel.<br>Find the distro that feels like home.</p>
+      </div>
+      <section class="control-panel" aria-label="Distribution controls">
+        <p class="step-label" id="family-label"><span class="step-number">01</span><span class="step-slash">/</span> CHOOSE A FAMILY</p>
+        <div class="family-tabs" role="tablist" aria-labelledby="family-label">
+          <button class="family-tab" id="tab-debian" role="tab" aria-selected="true" aria-controls="distro-panel" data-family="debian"><svg class="logo-icon" aria-hidden="true"><use href="#logo-debian"/></svg>Debian</button>
+          <button class="family-tab" id="tab-arch" role="tab" aria-selected="false" aria-controls="distro-panel" tabindex="-1" data-family="arch"><svg class="logo-icon" aria-hidden="true"><use href="#logo-arch"/></svg>Arch</button>
+          <button class="family-tab" id="tab-fedora" role="tab" aria-selected="false" aria-controls="distro-panel" tabindex="-1" data-family="fedora"><svg class="logo-icon" aria-hidden="true"><use href="#logo-fedora"/></svg>Fedora</button>
+        </div>
+        <div id="distro-panel" role="tabpanel" aria-labelledby="tab-debian">
+          <div class="distro-step">
+            <label class="step-label" for="distro-select"><span class="step-number">02</span><span class="step-slash">/</span> MAKE IT YOURS</label>
+            <div class="distro-picker">
+              <span class="selected-distro-icon" id="selected-distro-icon"><svg class="logo-icon" aria-hidden="true"><use href="#logo-mint"/></svg></span>
+              <select id="distro-select" aria-label="Linux distribution"><option value="mint">Linux Mint</option><option value="ubuntu">Ubuntu</option><option value="debian">Debian</option></select>
+              <svg class="icon picker-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </div>
+          </div>
+          <div id="distro-copy">
+            <p class="distro-description" id="distro-description">A comfortable start. A familiar desktop, without the fuss. Just make yourself at /home.</p>
+            <dl class="distro-facts">
+              <div class="distro-fact"><dt>Release style</dt><dd id="distro-release">Stable &amp; predictable</dd></div>
+              <div class="distro-fact"><dt>Package manager</dt><dd id="distro-packages">APT / .deb</dd></div>
+            </dl>
+          </div>
+          <button class="primary-button" id="details-button"><span id="details-button-label">Meet Linux Mint</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+          <p class="selection-note"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span id="selection-note">A friendly first step into Linux</span></p>
+        </div>
+      </section>
+    </aside>
+
+    <section class="scene-stage" id="scene-stage" aria-label="Interactive Linux family tree">
+      <div id="map-fallback"></div>
+      <canvas id="scene-canvas" tabindex="0" aria-label="3D Linux family tree. Drag to orbit and scroll to zoom. Use the labeled nodes or distribution controls to make a selection."></canvas>
+      <div id="node-labels"></div>
+      <div class="scene-eyebrow mono"><span class="status-dot"></span><span id="render-status">GROWING THE FAMILY TREE</span></div>
+      <div class="view-tools" role="toolbar" aria-label="3D view controls">
+        <button class="tool-button" id="zoom-out" title="Zoom out" aria-label="Zoom out" disabled><svg class="icon" aria-hidden="true"><use href="#i-minus"/></svg></button>
+        <button class="tool-button" id="zoom-in" title="Zoom in" aria-label="Zoom in" disabled><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></button>
+        <span class="tool-divider"></span>
+        <button class="tool-button" id="auto-rotate" title="Auto-rotate the tree" aria-label="Auto-rotate the tree" aria-pressed="false" disabled><svg class="icon" aria-hidden="true"><use href="#i-orbit"/></svg></button>
+        <button class="tool-button" id="reset-view" title="Reset view" aria-label="Reset view" disabled><svg class="icon" aria-hidden="true"><use href="#i-reset"/></svg></button>
+        <button class="tool-button" id="fullscreen" title="Expand the tree" aria-label="Expand the tree"><svg class="icon" aria-hidden="true"><use href="#i-fullscreen"/></svg></button>
+      </div>
+      <div class="scene-instructions" id="scene-instructions"><svg class="icon" aria-hidden="true"><use href="#i-hand"/></svg><span>Drag to orbit</span><span class="instruction-divider"></span><span>Scroll to zoom</span><span class="instruction-divider"></span><span>Click to explore</span></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="source-link" href="https://petrisha.club/a-laymans-guide-to-linux-distros" target="_blank" rel="noopener noreferrer"><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg>Inspired by Petrisha's <span>A Layman's Guide to Linux Distros</span><svg class="icon" aria-hidden="true"><use href="#i-external"/></svg></a>
+    <span class="footer-motto">Free software. Open possibilities.</span>
+  </footer>
+
+  <dialog id="app-modal" aria-labelledby="modal-title">
+    <div class="modal-topline"><span class="modal-kicker" id="modal-kicker"></span><button class="modal-close" id="modal-close" aria-label="Close dialog"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <h2 class="modal-title" id="modal-title"></h2>
+    <div class="modal-body" id="modal-body"></div>
+  </dialog>
+  <div class="sr-only" id="announcement" aria-live="polite" aria-atomic="true"></div>
+  <div id="toast" role="status"></div>
+  <noscript><p style="padding:24px;text-align:center">Enable JavaScript to explore the interactive Linux family tree. The original article is linked below the explorer.</p></noscript>
+
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const icon = (name, cls = 'icon') => `<svg class="${cls}" aria-hidden="true"><use href="#${name}"/></svg>`;
+      const distros = {
+        debian: {
+          name: 'Debian', family: 'debian', parent: 'linux', color: '#b9566b',
+          description: 'Slow and steady, by design. A time-tested foundation for systems you want to stay the same.',
+          tagline: 'The art of taking your time.', release: 'Stable, about every 2 years', packages: 'APT / .deb',
+          note: 'A foundation for patient, hands-on users', lineage: 'Linux / Debian',
+          about: 'Debian prioritizes well-tested software, free-software principles, and support for a wide range of hardware. Its stable releases trade the newest features for a predictable foundation.',
+          fit: 'You value a consistent system, are comfortable with some setup, or want a dependable server or desktop foundation.',
+          tradeoff: 'Stable does not mean every package is the latest. Very new hardware and the newest gaming software may need more work. The article points newcomers toward Ubuntu or Linux Mint instead.',
+          cadence: 'Stable releases roughly every 2 years', command: 'sudo apt update', commandNote: 'Refreshes the list of available packages. It does not install updates.',
+          website: 'https://www.debian.org/', shortRelease: 'Fixed, conservative', use: 'Consistency & control', feel: 'A dependable foundation', tradeoffShort: 'Older package versions', x: -3.80, z: 1.50
+        },
+        ubuntu: {
+          name: 'Ubuntu', family: 'debian', parent: 'debian', color: '#d87e51',
+          description: 'An approachable all-rounder. A polished desktop, a big community, and plenty of ways to get things done.',
+          tagline: 'A well-traveled path into Linux.', release: 'Fixed releases / LTS options', packages: 'APT / .deb',
+          note: 'One of the article\'s four starting points', lineage: 'Linux / Debian / Ubuntu',
+          about: 'Ubuntu builds on Debian with a desktop-focused experience, broad documentation, and a large community. Long-term support (LTS) editions are a common choice for a predictable everyday system.',
+          fit: 'You want a mainstream Linux desktop with lots of tutorials, broad software support, and a well-defined release schedule.',
+          tradeoff: 'Ubuntu makes more decisions for you than a minimal distribution does. Some applications are delivered as Snap packages alongside the traditional APT ecosystem.',
+          cadence: 'Every 6 months; LTS every 2 years', command: 'sudo apt update', commandNote: 'Refreshes the list of available APT packages. It does not install updates.',
+          website: 'https://ubuntu.com/desktop', shortRelease: 'Fixed, with LTS', use: 'An easy all-rounder', feel: 'Polished & mainstream', tradeoffShort: 'More defaults chosen for you', x: -4.20, z: -2.05
+        },
+        mint: {
+          name: 'Linux Mint', family: 'debian', parent: 'ubuntu', color: '#6b9254',
+          description: 'A comfortable start. A familiar desktop, without the fuss. Just make yourself at /home.',
+          tagline: 'Familiar by nature.', release: 'Stable & predictable', packages: 'APT / .deb',
+          note: 'A friendly first step into Linux', lineage: 'Linux / Debian / Ubuntu / Linux Mint',
+          about: 'Linux Mint puts everyday desktop comfort first. Its main edition builds on Ubuntu LTS, with a familiar desktop layout and practical tools that help you settle in without having to learn everything at once.',
+          fit: 'You are new to Linux, prefer a traditional desktop, or simply want a comfortable environment for browsing, work, and everyday life.',
+          tradeoff: 'The long-term foundation favors continuity over the very newest software. This map shows the main Ubuntu-based edition; Linux Mint also offers a separate Debian-based edition called LMDE.',
+          cadence: 'Periodic releases on an Ubuntu LTS base', command: 'sudo apt update', commandNote: 'Refreshes the list of available packages. You can also use the graphical Update Manager.',
+          website: 'https://linuxmint.com/', shortRelease: 'Fixed, LTS-based', use: 'An easy first step', feel: 'Familiar & comfortable', tradeoffShort: 'Not always the newest packages', x: -2.05, z: -4.60
+        },
+        arch: {
+          name: 'Arch Linux', family: 'arch', parent: 'linux', color: '#5796b2',
+          description: 'Your system, your decisions. A minimal starting point that keeps moving with the latest software.',
+          tagline: 'The freedom to build it your way.', release: 'Rolling / always evolving', packages: 'Pacman / .pkg.tar.zst',
+          note: 'Best for curious, hands-on Linux users', lineage: 'Linux / Arch Linux',
+          about: 'Arch uses a rolling-release model: you keep updating the same installation instead of upgrading between major OS versions. Its minimal foundation puts configuration and maintenance in your hands.',
+          fit: 'You enjoy understanding your tools, reading documentation, and choosing how your operating system fits together.',
+          tradeoff: 'Staying current asks for attention. Read update notices, keep backups, and expect occasional manual intervention. The AUR contains community-contributed build recipes, not officially vetted packages; helpers such as yay are optional.',
+          cadence: 'Continuous rolling releases', command: 'sudo pacman -Syu', commandNote: 'Refreshes repositories and performs a full system upgrade. Review changes before confirming.',
+          website: 'https://archlinux.org/', shortRelease: 'Rolling, current', use: 'Hands-on customization', feel: 'Minimal & self-directed', tradeoffShort: 'More maintenance responsibility', x: .70, z: -.10
+        },
+        cachyos: {
+          name: 'CachyOS', family: 'arch', parent: 'arch', color: '#559d94',
+          description: 'Arch energy, an easier entrance. A performance-minded desktop that stays close to the cutting edge.',
+          tagline: 'Take the fast lane.', release: 'Rolling / fresh & frequent', packages: 'Pacman + optional AUR',
+          note: 'The article\'s more accessible Arch pick', lineage: 'Linux / Arch Linux / CachyOS',
+          about: 'CachyOS builds on Arch with a more approachable installation and a focus on performance. You keep the rolling-release philosophy and access to the Arch ecosystem, with more choices already made to get you going.',
+          fit: 'You want current software, care about performance or gaming, and are comfortable giving your system regular attention.',
+          tradeoff: 'An easier installation does not remove the responsibilities of a rolling-release system. Keep backups, read update notices, and evaluate community AUR build recipes before using them.',
+          cadence: 'Continuous rolling releases', command: 'sudo pacman -Syu', commandNote: 'Refreshes repositories and performs a full system upgrade. Review changes before confirming.',
+          website: 'https://cachyos.org/', shortRelease: 'Rolling, current', use: 'Performance & fresh software', feel: 'Fast-moving & customizable', tradeoffShort: 'Updates need regular attention', x: 1.30, z: -3.42
+        },
+        fedora: {
+          name: 'Fedora', family: 'fedora', parent: 'linux', color: '#6083aa',
+          description: 'A little of the new. A lot of the dependable. A modern desktop with a thoughtful middle-ground approach.',
+          tagline: 'Fresh ideas. Solid footing.', release: 'Fixed / about every 6 months', packages: 'DNF / .rpm',
+          note: 'A fresh, well-rounded place to start', lineage: 'Linux / Fedora',
+          about: 'Fedora combines current open-source technology with regular, tested releases. It is a community project sponsored by Red Hat and feeds innovations into the enterprise ecosystem through CentOS Stream and RHEL.',
+          fit: 'You want a modern, well-rounded desktop for work, development, or everyday use without committing to a rolling release.',
+          tradeoff: 'Its relatively short support cycle means upgrading more often than on an LTS distribution. Some proprietary drivers and media codecs require extra setup; hardware compatibility always depends on the device.',
+          cadence: 'New versions about every 6 months', command: 'sudo dnf upgrade', commandNote: 'Checks for and installs available package updates after you confirm.',
+          website: 'https://fedoraproject.org/workstation/', shortRelease: 'Fixed, about 6 months', use: 'Modern work & development', feel: 'Fresh & well-rounded', tradeoffShort: 'More frequent version upgrades', x: 3.70, z: 1.70
+        },
+        rhel: {
+          name: 'Red Hat Enterprise Linux', short: 'RHEL', family: 'fedora', parent: 'fedora', color: '#c24b40',
+          description: 'Fedora\'s ideas, ready for work. A polished, long-supported system made for business.',
+          tagline: 'Stability you can put in a contract.', release: 'Fixed / 10-year lifecycle', packages: 'DNF / .rpm',
+          note: 'Made for businesses, servers, and IT pros', lineage: 'Linux / Fedora / CentOS Stream / RHEL',
+          about: 'Red Hat Enterprise Linux (RHEL) is the business-first end of the Fedora family. New ideas are tried in Fedora, developed further in CentOS Stream, and then delivered in RHEL as a polished platform with certified hardware and software, long-term support, and professional help from Red Hat. Red Hat has shipped Linux since 1995, and RHEL has been its enterprise flagship since 2002.',
+          fit: 'You run servers, work somewhere that relies on certified software and predictable updates, or want a support contract behind your systems. RHEL skills are also a well-trodden path into IT and system administration careers.',
+          tradeoff: 'RHEL is not aimed at a first home desktop. Business use generally requires a paid subscription, and software versions change deliberately slowly. The no-cost Red Hat Developer Subscription for Individuals lets you run it on up to 16 systems, and RHEL-compatible alternatives such as AlmaLinux and Rocky Linux are free. For a home desktop, the article\'s advice stands: want Fedora? Use Fedora.',
+          cadence: 'Major versions about every 3 years, each supported for 10 years', command: 'sudo dnf upgrade', commandNote: 'Installs available updates from Red Hat\'s repositories once the system is registered with a subscription.',
+          website: 'https://www.redhat.com/en/technologies/linux-platforms/enterprise-linux', shortRelease: 'Fixed, 10-year lifecycle', use: 'Servers and enterprise IT', feel: 'Polished and professional', tradeoffShort: 'Paid subscription for business use', x: 3.95, z: -1.95
+        }
+      };
+      const familyOptions = { debian: ['mint', 'ubuntu', 'debian'], arch: ['cachyos', 'arch'], fedora: ['fedora', 'rhel'] };
+      const lastChoice = { debian: 'mint', arch: 'cachyos', fedora: 'fedora' };
+      const subscribers = new Set();
+      const initial = location.hash.slice(1).toLowerCase();
+      let selected = Object.hasOwn(distros, initial) ? initial : 'mint';
+      let toastTimer;
+      const modal = $('app-modal');
+
+      function announce(message) { $('announcement').textContent = message; }
+      function toast(message) {
+        clearTimeout(toastTimer);
+        $('toast').textContent = message;
+        $('toast').classList.add('visible');
+        toastTimer = setTimeout(() => $('toast').classList.remove('visible'), 3000);
+      }
+
+      function selectDistro(id, updateUrl = true) {
+        if (!Object.hasOwn(distros, id)) return;
+        selected = id;
+        const d = distros[id];
+        lastChoice[d.family] = id;
+        document.querySelectorAll('.family-tab').forEach((tab) => {
+          const active = tab.dataset.family === d.family;
+          tab.setAttribute('aria-selected', String(active));
+          tab.tabIndex = active ? 0 : -1;
+        });
+        $('distro-panel').setAttribute('aria-labelledby', `tab-${d.family}`);
+        $('distro-select').innerHTML = familyOptions[d.family].map((key) => `<option value="${key}"${key === id ? ' selected' : ''}>${distros[key].name}</option>`).join('');
+        fitPicker();
+        $('selected-distro-icon').style.background = d.color;
+        $('selected-distro-icon').innerHTML = icon(`logo-${id}`, 'logo-icon');
+        $('distro-description').textContent = d.description;
+        $('distro-release').textContent = d.release;
+        $('distro-packages').textContent = d.packages;
+        $('details-button-label').textContent = `Meet ${d.short || d.name}`;
+        $('selection-note').textContent = d.note;
+        $('distro-copy').classList.remove('content-change');
+        void $('distro-copy').offsetWidth;
+        $('distro-copy').classList.add('content-change');
+        document.querySelectorAll('[data-node]').forEach((node) => {
+          const active = node.dataset.node === id;
+          node.classList.toggle('selected', active);
+          node.classList.toggle('is-selected', active);
+          if (node.dataset.node !== 'linux') node.setAttribute('aria-pressed', String(active));
+        });
+        const lineage = new Set();
+        let ancestor = id;
+        while (ancestor && ancestor !== 'linux') { lineage.add(ancestor); ancestor = distros[ancestor].parent; }
+        document.querySelectorAll('[data-fallback-edge]').forEach((edge) => {
+          edge.setAttribute('stroke', lineage.has(edge.dataset.fallbackEdge) ? '#88aa60' : '#c6d5b6');
+        });
+        if (updateUrl) {
+          try { history.replaceState(null, '', `#${id}`); } catch (_) { /* Some sandboxed previews block history changes. */ }
+        }
+        subscribers.forEach((fn) => fn(id));
+        if (updateUrl) announce(`${d.name} selected. ${d.release}. ${d.packages}.`);
+      }
+
+      function openModal(kicker, title, content, wide = false) {
+        $('modal-kicker').textContent = kicker;
+        $('modal-title').textContent = title;
+        $('modal-body').innerHTML = content;
+        modal.classList.toggle('wide', wide);
+        if (!modal.open) modal.showModal();
+        modal.scrollTop = 0;
+      }
+
+      function showDetails(id = selected) {
+        if (id === 'linux') {
+          openModal('MEET THE COMMON GROUND', 'It starts with a kernel.', `
+            <p>Linux is the kernel: the part of an operating system that connects software to hardware. A distribution wraps it in a complete experience, choosing the desktop, software tools, package manager, and update philosophy.</p>
+            <h3>Same roots. Different routes.</h3>
+            <p>Follow the paths in the map to see how those choices are inherited and adapted. Debian, Arch, and Fedora represent the three starting points in Petrisha's guide, not every branch of the Linux world.</p>
+            <h3>And the little penguin?</h3>
+            <p>That is our code-built take on Tux, the Linux mascot. Like every object in this scene, it is made entirely from simple geometry.</p>
+            <button class="primary-button" data-close-modal>Back to the family ${icon('i-arrow')}</button>`);
+          return;
+        }
+        const d = distros[id];
+        openModal(`${d.family.toUpperCase()} FAMILY / A CLOSER LOOK`, d.name, `
+          <div class="detail-brand"><span class="detail-brand-icon" style="background:${d.color}">${icon(`logo-${id}`, 'logo-icon')}</span><div><div class="detail-tagline">${d.tagline}</div><div class="detail-lineage">${d.lineage}</div></div></div>
+          <p>${d.about}</p>
+          <dl class="detail-facts"><div><dt>UPDATE RHYTHM</dt><dd>${d.cadence}</dd></div><div><dt>SOFTWARE TOOLBOX</dt><dd>${d.packages}</dd></div></dl>
+          <h3>A good fit if...</h3><p>${d.fit}</p>
+          <h3>A little give and take</h3><p>${d.tradeoff}</p>
+          <h3>A glimpse of the terminal</h3><div class="command-row"><code>${d.command}</code><button class="copy-button" data-copy="${id}" aria-label="Copy ${d.name} package command">${icon('i-copy')}Copy</button></div><p class="command-note">${d.commandNote} Nothing runs in this explorer.</p>
+          <a class="primary-button" href="${d.website}" target="_blank" rel="noopener noreferrer">Visit ${d.name} ${icon('i-external')}</a>`);
+      }
+
+      function showCompare() {
+        const ids = ['mint', 'ubuntu', 'cachyos', 'fedora'];
+        const familyNames = { debian: 'Debian', arch: 'Arch', fedora: 'Fedora' };
+        const row = (label, key) => `<tr><th scope="row">${label}</th>${ids.map((id) => `<td>${key === 'family' ? familyNames[distros[id].family] : distros[id][key]}</td>`).join('')}</tr>`;
+        openModal('FOUR STARTING POINTS / NO WRONG TURNS', 'Find your kind of different.', `
+          <p class="compare-intro">The article's four recommendations, side by side. There is no universal best distro, just a set of choices that fits the way you work.</p>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Compare four recommended Linux distributions"><table class="compare-table"><thead><tr><th scope="col"><span class="sr-only">Feature</span></th>${ids.map((id) => `<th scope="col"><span class="compare-logo" style="background:${distros[id].color}">${icon(`logo-${id}`, 'logo-icon')}</span><span class="compare-name">${distros[id].name}</span></th>`).join('')}</tr></thead><tbody>
+          ${row('Family', 'family')}${row('Release style', 'shortRelease')}${row('Package manager', 'packages')}${row('Feels like', 'feel')}${row('A good fit for', 'use')}${row('The trade-off', 'tradeoffShort')}
+          </tbody><tfoot><tr><td></td>${ids.map((id) => `<td><button class="compare-select" data-select="${id}">Explore ${icon('i-arrow')}</button></td>`).join('')}</tr></tfoot></table></div>
+          <div class="compare-extra"><span class="compare-logo" style="background:${distros.rhel.color}">${icon('logo-rhel', 'logo-icon')}</span><p><strong>Also in the Fedora family: Red Hat Enterprise Linux (RHEL).</strong> It shares Fedora's DNF and RPM tools, but it is built for businesses rather than first-time home users, so it is not one of the article's four picks.</p><button class="compare-select" data-select="rhel">Explore RHEL ${icon('i-arrow')}</button></div>
+          <p class="compare-footnote">A starting point, not a ranking. Hardware support depends on your exact device. Try a live USB and check your hardware before installing.</p>`, true);
+      }
+
+      function showGuide() {
+        openModal('THE IDEA BEHIND THE EXPLORER', 'The map, not the maze.', `
+          <p>Linux is not one single desktop. It is a shared foundation that many communities turn into their own operating systems, called distributions, or distros for short.</p>
+          <h3>A distro is a plan, not just a download.</h3>
+          <p>Choosing one means choosing how software arrives, how often things change, and how much you want to make your own decisions. That is the heart of Petrisha's <em>A Layman's Guide to Linux Distros</em>.</p>
+          <h3>Three families to make a start.</h3>
+          <p><strong>Debian</strong> leans toward a steady, well-tested foundation. <strong>Arch</strong> favors current software and user control. <strong>Fedora</strong> offers a modern, regularly refreshed middle ground, and it is the proving ground for its business-first descendant, <strong>Red Hat Enterprise Linux (RHEL)</strong>.</p>
+          <h3>Intentionally not the whole family tree.</h3>
+          <p>This is a simplified conceptual map of the article, not an exhaustive genealogy. Independent families such as openSUSE, Gentoo, and Slackware also exist. Here, Linux Mint follows its main Ubuntu-based edition, and RHEL links directly to Fedora, a shortcut for the real pipeline in which changes flow from Fedora through CentOS Stream into RHEL.</p>
+          <h3>A small world, built from scratch.</h3>
+          <p>The scene uses Three.js r180. Every object, icon, texture, and the little Tux is generated with code. No image files, 3D models, or external visual assets are loaded.</p>
+          <p class="guide-source">Words and inspiration: <a href="https://petrisha.club/a-laymans-guide-to-linux-distros" target="_blank" rel="noopener noreferrer">Petrisha's original field guide</a>.</p>`);
+      }
+
+      function showMenu() {
+        openModal('THE LINUX EXPLORER', 'Where to next?', `<nav class="mobile-menu" aria-label="Mobile navigation"><button data-close-modal>Back to the explorer ${icon('i-arrow')}</button><button data-navigate="compare">Compare distros ${icon('i-arrow')}</button><button data-navigate="guide">The field guide ${icon('i-arrow')}</button><button data-navigate="quiz">Find my distro ${icon('i-arrow')}</button></nav>`);
+      }
+
+      const questions = [
+        { title: 'What will you mostly use Linux for?', answers: [
+          { text: 'Everyday browsing, work, and life', score: { mint: 3, ubuntu: 2, rhel: 1 } },
+          { text: 'Development and creative work', score: { fedora: 3, ubuntu: 2, rhel: 1 } },
+          { text: 'Gaming and getting more from my hardware', score: { cachyos: 3, fedora: 1, rhel: 0 } },
+          { text: 'Business servers and IT work', score: { rhel: 5, fedora: 2, mint: 0 } }
+        ] },
+        { title: 'How do you feel about tinkering?', answers: [
+          { text: 'I would rather just get on with things', score: { mint: 3, ubuntu: 2, rhel: 2 } },
+          { text: 'A little setup is fine with me', score: { ubuntu: 3, fedora: 2, rhel: 2 } },
+          { text: 'Let me roll up my sleeves', score: { cachyos: 3, fedora: 1, rhel: 1 } }
+        ] },
+        { title: 'What feels most like your kind of desktop?', answers: [
+          { text: 'Familiar, comfortable, and predictable', score: { mint: 3, ubuntu: 1, rhel: 1 } },
+          { text: 'Modern, balanced, and well-rounded', score: { fedora: 3, ubuntu: 3, rhel: 2 } },
+          { text: 'The latest software, as it arrives', score: { cachyos: 4, fedora: 1, rhel: 0 } },
+          { text: 'Polished, professional, and long-supported', score: { rhel: 4, fedora: 2, mint: 1 } }
+        ] }
+      ];
+      let quizStep = 0;
+      let quizAnswers = [null, null, null];
+      let quizResult = 'mint';
+
+      function renderQuiz() {
+        const q = questions[quizStep];
+        openModal('THREE SMALL QUESTIONS / A GOOD FIRST STEP', 'Find your next /home.', `
+          <div class="quiz-progress" aria-hidden="true">${questions.map((_, index) => `<span class="${index <= quizStep ? 'complete' : ''}"></span>`).join('')}</div>
+          <div class="quiz-count mono">QUESTION ${quizStep + 1} OF 3</div><h3 class="quiz-question" id="quiz-question" tabindex="-1">${q.title}</h3>
+          <div class="quiz-answers" role="group" aria-labelledby="quiz-question">${q.answers.map((a, index) => `<button class="quiz-answer" data-answer="${index}" aria-pressed="${quizAnswers[quizStep] === index}">${a.text}</button>`).join('')}</div>
+          <div class="quiz-navigation">${quizStep > 0 ? '<button class="quiz-back" data-quiz-back>Back</button>' : ''}<button class="primary-button quiz-next" data-quiz-next ${quizAnswers[quizStep] === null ? 'disabled' : ''}>${quizStep === 2 ? 'Find my fit' : 'Next question'}${icon('i-arrow')}</button></div>`);
+      }
+
+      function showQuiz() {
+        quizStep = 0;
+        quizAnswers = [null, null, null];
+        renderQuiz();
+      }
+
+      function showQuizResult() {
+        const scores = { mint: 0, ubuntu: 0, fedora: 0, cachyos: 0, rhel: 0 };
+        questions.forEach((q, index) => Object.entries(q.answers[quizAnswers[index]].score).forEach(([id, score]) => { scores[id] += score; }));
+        quizResult = Object.keys(scores).sort((a, b) => scores[b] - scores[a])[0];
+        const d = distros[quizResult];
+        selectDistro(quizResult);
+        openModal('YOUR STARTING POINT / NOT A LIFETIME COMMITMENT', 'This could feel like home.', `
+          <span class="quiz-result-icon" style="background:${d.color}">${icon(`logo-${quizResult}`, 'logo-icon')}</span><div class="quiz-count mono">A LITTLE DIRECTION, BASED ON YOUR ANSWERS</div>
+          <h3 class="quiz-result-name">${d.name}</h3><p>${d.description}</p><p>${d.fit}</p>
+          <p class="command-note">A friendly recommendation, not a hardware compatibility test. Try it from a live USB before making the move.</p>
+          <button class="primary-button" data-quiz-use>Explore ${d.name}${icon('i-arrow')}</button><button class="quiz-restart" data-quiz-restart>Try a different path</button>`);
+      }
+
+      async function copyCommand(id, button) {
+        const command = distros[id].command;
+        try {
+          if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(command);
+          else {
+            const input = document.createElement('textarea');
+            input.value = command;
+            input.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+            modal.appendChild(input);
+            input.select();
+            const copied = document.execCommand('copy');
+            input.remove();
+            if (!copied) throw new Error('Clipboard unavailable');
+          }
+          button.innerHTML = `${icon('i-check')}Copied`;
+          button.setAttribute('aria-label', 'Command copied');
+        } catch (_) {
+          button.textContent = 'Select text to copy';
+          const range = document.createRange();
+          range.selectNodeContents(button.previousElementSibling);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
+
+      function buildFallback() {
+        const positions = { linux: [442, 541], debian: [253, 393], ubuntu: [190, 236], mint: [319, 104], arch: [526, 311], cachyos: [611, 140], fedora: [747, 416], rhel: [772, 226] };
+        const paths = Object.entries(distros).map(([id, d]) => {
+          const a = positions[d.parent], b = positions[id];
+          return `<path data-fallback-edge="${id}" d="M${a[0]} ${a[1]}C${a[0]} ${(a[1] + b[1]) / 2} ${b[0]} ${(a[1] + b[1]) / 2} ${b[0]} ${b[1]}" fill="none" stroke="#c6d5b6" stroke-width="3"/>`;
+        }).join('');
+        const nodes = Object.entries(positions).map(([id, pos]) => {
+          const d = distros[id];
+          return `<g class="fallback-node" data-node="${id}" role="button" tabindex="0" aria-label="${d ? 'Select ' + d.name : 'Learn about the Linux kernel'}" transform="translate(${pos[0]} ${pos[1]})"><ellipse cx="0" cy="26" rx="49" ry="15" fill="#dce5d0"/><ellipse cx="0" cy="18" rx="47" ry="17" fill="#fcfdf7"/><circle class="fallback-ring" cy="-10" r="44" fill="none" stroke-width="2"/><circle class="fallback-disc" cy="-10" r="36" fill="${d ? d.color : '#e6edda'}"/><use href="#logo-${id}" x="-30" y="-40" width="60" height="60" color="${d ? 'white' : '#293c31'}" fill="currentColor"/><text y="58" text-anchor="middle" fill="#667657" font-family="Arial,sans-serif" font-size="13">${d ? (d.short || d.name) : 'Linux'}</text></g>`;
+        }).join('');
+        $('map-fallback').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 710" aria-label="Linux distribution family tree"><defs><pattern id="fallback-grid" width="23" height="23" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".7" fill="#c9d5bb"/></pattern></defs><ellipse cx="461" cy="449" rx="340" ry="152" fill="#e7eddc" opacity=".6"/><rect x="79" y="58" width="748" height="578" rx="100" fill="url(#fallback-grid)" opacity=".6"/>${paths}${nodes}</svg>`;
+        $('map-fallback').addEventListener('click', (event) => {
+          const node = event.target.closest('[data-node]');
+          if (node) node.dataset.node === 'linux' ? showDetails('linux') : selectDistro(node.dataset.node);
+        });
+        $('map-fallback').addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            const node = event.target.closest('[data-node]');
+            if (node) { event.preventDefault(); node.dataset.node === 'linux' ? showDetails('linux') : selectDistro(node.dataset.node); }
+          }
+        });
+      }
+
+      document.querySelectorAll('[data-open]').forEach((button) => button.addEventListener('click', () => {
+        ({ compare: showCompare, guide: showGuide, quiz: showQuiz, menu: showMenu })[button.dataset.open]();
+      }));
+      document.querySelectorAll('[data-family]').forEach((button) => button.addEventListener('click', () => selectDistro(lastChoice[button.dataset.family])));
+      document.querySelector('.family-tabs').addEventListener('keydown', (event) => {
+        const tabs = [...document.querySelectorAll('.family-tab')];
+        let index = tabs.indexOf(document.activeElement);
+        if (index < 0) return;
+        if (event.key === 'ArrowRight') index = (index + 1) % tabs.length;
+        else if (event.key === 'ArrowLeft') index = (index + tabs.length - 1) % tabs.length;
+        else if (event.key === 'Home') index = 0;
+        else if (event.key === 'End') index = tabs.length - 1;
+        else return;
+        event.preventDefault();
+        tabs[index].click();
+        tabs[index].focus();
+      });
+      $('distro-select').addEventListener('change', (event) => selectDistro(event.target.value));
+      $('details-button').addEventListener('click', () => showDetails());
+      $('modal-close').addEventListener('click', () => modal.close());
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+          const rect = modal.getBoundingClientRect();
+          if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) modal.close();
+        }
+      });
+      $('modal-body').addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        if (button.dataset.navigate) {
+          ({ compare: showCompare, guide: showGuide, quiz: showQuiz })[button.dataset.navigate]();
+          $('modal-close').focus();
+        }
+        if (button.hasAttribute('data-close-modal')) modal.close();
+        if (button.dataset.select) { selectDistro(button.dataset.select); modal.close(); }
+        if (button.dataset.copy) copyCommand(button.dataset.copy, button);
+        if (button.hasAttribute('data-answer')) {
+          quizAnswers[quizStep] = Number(button.dataset.answer);
+          document.querySelectorAll('.quiz-answer').forEach((answer) => answer.setAttribute('aria-pressed', String(answer === button)));
+          document.querySelector('[data-quiz-next]').disabled = false;
+        }
+        if (button.hasAttribute('data-quiz-next') && quizAnswers[quizStep] !== null) {
+          if (quizStep < 2) { quizStep++; renderQuiz(); $('quiz-question').focus(); }
+          else { showQuizResult(); $('modal-title').setAttribute('tabindex', '-1'); $('modal-title').focus(); }
+        }
+        if (button.hasAttribute('data-quiz-back')) { quizStep--; renderQuiz(); $('quiz-question').focus(); }
+        if (button.hasAttribute('data-quiz-restart')) showQuiz();
+        if (button.hasAttribute('data-quiz-use')) { selectDistro(quizResult); modal.close(); $('explorer').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      });
+      $('home-link').addEventListener('click', (event) => { event.preventDefault(); selectDistro('mint'); window.scrollTo({ top: 0, behavior: 'smooth' }); window.DistroExplorer.scene?.reset(); });
+      $('explorer-link').addEventListener('click', () => { modal.close(); $('explorer').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+      window.addEventListener('hashchange', () => { const id = location.hash.slice(1).toLowerCase(); if (Object.hasOwn(distros, id)) selectDistro(id, false); });
+      $('fullscreen').addEventListener('click', async () => {
+        try {
+          if (document.fullscreenElement) await document.exitFullscreen();
+          else if ($('scene-stage').requestFullscreen) await $('scene-stage').requestFullscreen();
+          else toast('Your browser does not support this fullscreen view.');
+        } catch (_) { toast('Fullscreen is unavailable in this browser view.'); }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        const active = Boolean(document.fullscreenElement);
+        $('fullscreen').setAttribute('aria-label', active ? 'Exit expanded view' : 'Expand the tree');
+        $('fullscreen').title = active ? 'Exit expanded view' : 'Expand the tree';
+      });
+
+      // Long names such as "Red Hat Enterprise Linux" shrink to fit the picker instead of being clipped.
+      function fitPicker() {
+        const select = $('distro-select');
+        const measure = fitPicker.ctx || (fitPicker.ctx = document.createElement('canvas').getContext('2d'));
+        if (!select || !measure) return;
+        select.style.fontSize = '';
+        const style = getComputedStyle(select);
+        const available = select.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 4;
+        const text = select.options[select.selectedIndex]?.text || '';
+        const size = parseFloat(style.fontSize);
+        measure.font = `${style.fontWeight} ${size}px ${style.fontFamily}`;
+        const needed = measure.measureText(text).width + (parseFloat(style.letterSpacing) || 0) * text.length;
+        if (available > 0 && needed > available) select.style.fontSize = `${Math.max(12, Math.floor(size * available / needed))}px`;
+      }
+      if ('ResizeObserver' in window) new ResizeObserver(() => fitPicker()).observe($('distro-select'));
+      buildFallback();
+      selectDistro(selected, false);
+      window.DistroExplorer = {
+        distros, select: selectDistro, details: showDetails, toast,
+        get selected() { return selected; },
+        subscribe(fn) { subscribers.add(fn); return () => subscribers.delete(fn); },
+        scene: null
+      };
+    })();
+  </script>
+
+  <script type="module">
+    const app = window.DistroExplorer;
+    const stage = document.getElementById('scene-stage');
+    const canvas = document.getElementById('scene-canvas');
+    const status = document.getElementById('render-status');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    try {
+      const THREE = await import('three');
+      const [{ OrbitControls }, { RoundedBoxGeometry }, { RoomEnvironment }] = await Promise.all([
+        import('three/addons/controls/OrbitControls.js'),
+        import('three/addons/geometries/RoundedBoxGeometry.js'),
+        import('three/addons/environments/RoomEnvironment.js')
+      ]);
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.23;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFShadowMap;
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#f3f5ee');
+      scene.fog = new THREE.Fog('#f3f5ee', 36, 75);
+
+      // The lighting environment is geometry-generated, not an image or HDR asset.
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const room = new RoomEnvironment();
+      const environmentTarget = pmrem.fromScene(room, .045);
+      scene.environment = environmentTarget.texture;
+      scene.environmentIntensity = .48;
+      room.dispose();
+      pmrem.dispose();
+
+      const camera = new THREE.OrthographicCamera(-8, 8, 6, -6, .1, 100);
+      const initialPosition = new THREE.Vector3(11, 14, 19);
+      const initialTarget = new THREE.Vector3(-.15, .15, -.6);
+      camera.position.copy(initialPosition);
+      camera.lookAt(initialTarget);
+      const controls = new OrbitControls(camera, canvas);
+      controls.target.copy(initialTarget);
+      controls.enableDamping = true;
+      controls.dampingFactor = .065;
+      controls.enablePan = false;
+      controls.minZoom = .74;
+      controls.maxZoom = 1.9;
+      controls.minPolarAngle = .48;
+      controls.maxPolarAngle = 1.23;
+      controls.rotateSpeed = .56;
+      controls.zoomSpeed = .7;
+      controls.autoRotateSpeed = .34;
+      controls.autoRotate = false;
+      controls.update();
+      controls.saveState();
+      // OrbitControls sets touch-action to "none", which traps page scrolling on phones.
+      // Allow vertical page scrolling over the scene, but give the scene full control when it is fullscreen.
+      const setTouchMode = () => { canvas.style.touchAction = document.fullscreenElement === stage ? 'none' : 'pan-y'; };
+      setTouchMode();
+      document.addEventListener('fullscreenchange', setTouchMode);
+      if (!document.fullscreenEnabled) document.getElementById('fullscreen').hidden = true;
+
+      scene.add(new THREE.HemisphereLight('#ffffff', '#b3c39c', 1.55));
+      const sun = new THREE.DirectionalLight('#fff9e9', 3.25);
+      sun.position.set(-7, 15, 9);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.camera.left = -11;
+      sun.shadow.camera.right = 11;
+      sun.shadow.camera.top = 11;
+      sun.shadow.camera.bottom = -11;
+      sun.shadow.camera.near = .5;
+      sun.shadow.camera.far = 40;
+      sun.shadow.normalBias = .035;
+      sun.shadow.bias = -.0002;
+      sun.shadow.radius = 4;
+      scene.add(sun);
+      const fill = new THREE.DirectionalLight('#dbeecd', .8);
+      fill.position.set(7, 6, -8);
+      scene.add(fill);
+
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(180, 180), new THREE.ShadowMaterial({ color: '#62734f', opacity: .14 }));
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -1.04;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      const world = new THREE.Group();
+      scene.add(world);
+      const mat = (color, roughness = .55, metalness = .03) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
+      function addMesh(geometry, material, parent, position = [0, 0, 0]) {
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(...position);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        parent.add(mesh);
+        return mesh;
+      }
+
+      const board = new THREE.Group();
+      world.add(board);
+      addMesh(new RoundedBoxGeometry(11.30, .16, 10.70, 5, .32), mat('#becdac', .73), board, [-.15, -.51, -.70]);
+      addMesh(new RoundedBoxGeometry(11.34, .32, 10.74, 6, .34), mat('#e5ecda', .8), board, [-.15, -.33, -.70]);
+      addMesh(new RoundedBoxGeometry(11.18, .055, 10.58, 5, .31), mat('#eaf0e1', .88), board, [-.15, -.155, -.70]);
+
+      // A dot matrix and fine engraved lines make the family tree feel like a physical circuit garden.
+      const dotPositions = [];
+      for (let x = -5.2; x <= 5.1; x += .43) {
+        for (let z = -5.5; z <= 4.0; z += .43) dotPositions.push(x, -.123, z);
+      }
+      const dotGeometry = new THREE.BufferGeometry();
+      dotGeometry.setAttribute('position', new THREE.Float32BufferAttribute(dotPositions, 3));
+      const dots = new THREE.Points(dotGeometry, new THREE.PointsMaterial({ color: '#afc298', size: 1.2, transparent: true, opacity: .48, sizeAttenuation: false }));
+      board.add(dots);
+
+      function roundedOutline(width, depth, radius, y, color, opacity = 1) {
+        const points = [];
+        const corners = [
+          [width / 2 - radius, depth / 2 - radius, 0],
+          [-width / 2 + radius, depth / 2 - radius, Math.PI / 2],
+          [-width / 2 + radius, -depth / 2 + radius, Math.PI],
+          [width / 2 - radius, -depth / 2 + radius, Math.PI * 1.5]
+        ];
+        corners.forEach(([x, z, start]) => {
+          for (let i = 0; i <= 12; i++) {
+            const angle = start + (i / 12) * Math.PI / 2;
+            points.push(new THREE.Vector3(x + radius * Math.cos(angle), y, z + radius * Math.sin(angle)));
+          }
+        });
+        return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
+      }
+      const outline = roundedOutline(10.88, 10.25, .48, -.121, '#b6c6a3', .72);
+      outline.position.set(-.15, 0, -.7);
+      board.add(outline);
+      for (let i = 0; i < 7; i++) {
+        const marker = addMesh(new THREE.BoxGeometry(.028, .008, .11 + (i % 3 === 0 ? .08 : 0)), mat('#9ab283'), board, [3.33 + i * .16, -.115, 4.15]);
+        marker.castShadow = false;
+      }
+      for (const [x, z] of [[-5.22, -5.45], [4.92, -5.45], [-5.22, 4.05], [4.92, 4.05]]) {
+        addMesh(new THREE.CylinderGeometry(.06, .06, .012, 20), mat('#c0cdb1', .35, .25), board, [x, -.112, z]);
+      }
+
+      function radialTexture(inner, mid) {
+        const element = document.createElement('canvas');
+        element.width = element.height = 128;
+        const ctx = element.getContext('2d');
+        const gradient = ctx.createRadialGradient(64, 64, 2, 64, 64, 62);
+        gradient.addColorStop(0, inner);
+        gradient.addColorStop(.44, mid);
+        gradient.addColorStop(1, 'rgba(80,110,55,0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 128, 128);
+        const texture = new THREE.CanvasTexture(element);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        return texture;
+      }
+      const shadowTexture = radialTexture('rgba(64,88,44,.22)', 'rgba(64,88,44,.1)');
+      const glowTexture = radialTexture('rgba(169,214,112,.62)', 'rgba(175,218,123,.23)');
+      const sharedSphere = new THREE.SphereGeometry(1, 36, 28);
+      const nodes = {};
+      const pickTargets = [];
+      let hoverId = null;
+
+      const logoPaths = {
+        mint: 'M23 24v35c0 13 8 20 22 20h21c13 0 20-8 20-20V46c0-12-7-19-17-19-6 0-11 3-14 7-3-4-8-7-14-7h-7v35h10V39h2c4 0 6 3 6 8v15h10V47c0-5 2-8 6-8s7 3 7 8v12c0 6-3 9-10 9H45c-8 0-12-4-12-10V24Z',
+        arch: 'm50 10 35 77-23-13c1-4 1-7 0-10-2-5-6-8-12-8s-10 3-12 8c-1 3-1 6 0 10L15 87l17-37 14 8-10-17Z',
+        fedora: 'M69 16H57c-16 0-25 10-25 25v21c0 6-3 10-9 10s-10-4-10-10 4-10 10-10h36V41H24C11 41 2 50 2 63s9 22 22 22 22-9 22-23V42c0-10 4-15 13-15h10Z',
+        cachyos: 'M75 20H42L17 49l25 30h34L58 59H46L37 49l9-10h13Z'
+      };
+      // A code-drawn red hat: crown, translucent hat band, and an upturned brim.
+      const rhelHat = {
+        crown: 'M31 49C30.5 40 32 34 37 30C41 25.5 46 28 50 29.5C54 28 59 25.5 63 30C68 34 69.5 40 69 49C56 52.5 44 52.5 31 49Z',
+        band: 'M31 49C44 52.5 56 52.5 69 49L69 56.5C56 60 44 60 31 56.5Z',
+        brim: 'M8 60C8 52.5 18 54 27 57.5C40 62.5 60 62.5 73 57.5C82 54 92 52.5 92 60C92 68 73 72 50 72C27 72 8 68 8 60Z'
+      };
+
+      function logoTexture(id, color) {
+        const element = document.createElement('canvas');
+        element.width = element.height = 512;
+        const ctx = element.getContext('2d');
+        ctx.scale(5.12, 5.12);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(50, 50, 50, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.save();
+        ctx.translate(11, 11);
+        ctx.scale(.78, .78);
+        ctx.fillStyle = '#fafcf4';
+        ctx.strokeStyle = '#fafcf4';
+        if (id === 'debian') {
+          ctx.lineWidth = 5.5;
+          ctx.lineCap = 'round';
+          ctx.stroke(new Path2D('M53 48c11 3 15-9 9-16-8-9-23-2-24 10-2 15 13 24 27 16 20-11 16-38-3-45-22-9-47 8-47 32 0 23 17 38 39 41'));
+        } else if (id === 'ubuntu') {
+          ctx.lineWidth = 9;
+          ctx.stroke(new Path2D('M40 29a23 23 0 0 1 30 11M73 50a23 23 0 0 1-20 23M41 71a23 23 0 0 1-14-29'));
+          [[50, 17], [79, 67], [21, 67]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill(); });
+        } else if (id === 'rhel') {
+          ctx.fill(new Path2D(rhelHat.crown));
+          ctx.fill(new Path2D(rhelHat.brim));
+          ctx.globalAlpha = .42;
+          ctx.fill(new Path2D(rhelHat.band));
+        } else {
+          if (id === 'fedora') ctx.translate(12, 0);
+          ctx.fill(new Path2D(logoPaths[id]), 'evenodd');
+          if (id === 'cachyos') { ctx.globalAlpha = .6; ctx.fill(new Path2D('m68 41 17 19-15 18-8-10 7-8-9-10Z')); }
+        }
+        ctx.restore();
+        const texture = new THREE.CanvasTexture(element);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        return texture;
+      }
+
+      function makeLabel(id, name, fullName = name) {
+        const button = document.createElement('button');
+        button.className = 'node-label';
+        button.dataset.node = id;
+        button.innerHTML = `${name}${id === 'linux' ? '<span class="node-subtitle">THE SHARED KERNEL</span>' : ''}`;
+        button.setAttribute('aria-label', id === 'linux' ? 'Learn about the Linux kernel' : `Select ${fullName}`);
+        if (fullName !== name) button.title = fullName;
+        if (id !== 'linux') button.setAttribute('aria-pressed', String(id === app.selected));
+        button.classList.toggle('selected', id === app.selected);
+        button.addEventListener('click', () => id === 'linux' ? app.details('linux') : app.select(id));
+        button.addEventListener('pointerenter', () => { hoverId = id; });
+        button.addEventListener('pointerleave', () => { hoverId = null; });
+        document.getElementById('node-labels').appendChild(button);
+        return button;
+      }
+
+      function makeNode(id, d) {
+        const group = new THREE.Group();
+        group.position.set(d.x, 0, d.z);
+        world.add(group);
+        const platform = new THREE.Group();
+        group.add(platform);
+        const baseMat = mat('#f4f6ed', .48, .06);
+        const lowerMat = mat('#bdcfa9', .52, .13);
+        addMesh(new THREE.CylinderGeometry(.86, .91, .13, 64), lowerMat, platform, [0, -.045, 0]);
+        addMesh(new THREE.CylinderGeometry(.91, .88, .20, 64), baseMat, platform, [0, .065, 0]);
+        const topMat = mat('#edf3e4', .6);
+        addMesh(new THREE.CylinderGeometry(.83, .83, .045, 64), topMat, platform, [0, .184, 0]);
+        const groove = addMesh(new THREE.TorusGeometry(.81, .011, 8, 80), mat('#c4d6ad', .4, .15), platform, [0, .212, 0]);
+        groove.rotation.x = Math.PI / 2;
+
+        const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.7, 2.7), new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, depthWrite: false, opacity: .8 }));
+        shadow.rotation.x = -Math.PI / 2;
+        shadow.position.y = -.115;
+        group.add(shadow);
+
+        const glow = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 3.6), new THREE.MeshBasicMaterial({ map: glowTexture, transparent: true, depthWrite: false, opacity: 0 }));
+        glow.rotation.x = -Math.PI / 2;
+        glow.position.y = -.109;
+        group.add(glow);
+
+        const halo = new THREE.Group();
+        group.add(halo);
+        const haloMaterial = new THREE.MeshBasicMaterial({ color: '#9fc673', transparent: true, opacity: 0, depthWrite: false });
+        for (const radius of [1.055, 1.18]) {
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, .010, 7, 100), haloMaterial);
+          ring.rotation.x = Math.PI / 2;
+          ring.position.y = -.075;
+          halo.add(ring);
+        }
+
+        const coin = new THREE.Group();
+        coin.position.y = 1.10;
+        coin.rotation.y = .52;
+        group.add(coin);
+        const edgeMat = mat(d.color, .28, .28);
+        addMesh(new THREE.CylinderGeometry(.655, .655, .19, 80), edgeMat, coin).rotation.x = Math.PI / 2;
+        const trim = addMesh(new THREE.TorusGeometry(.634, .017, 10, 90), mat('#f6f8ef', .3, .3), coin, [0, 0, .098]);
+        const faceMat = new THREE.MeshStandardMaterial({ map: logoTexture(id, d.color), roughness: .54, metalness: .01 });
+        const face = addMesh(new THREE.CircleGeometry(.619, 80), faceMat, coin, [0, 0, .103]);
+        face.castShadow = false;
+        const rear = addMesh(new THREE.CircleGeometry(.619, 80), faceMat, coin, [0, 0, -.103]);
+        rear.rotation.y = Math.PI;
+        rear.castShadow = false;
+        trim.castShadow = false;
+
+        group.traverse((object) => {
+          if (object.isMesh && object !== shadow && object !== glow && object.parent !== halo) {
+            object.userData.nodeId = id;
+            pickTargets.push(object);
+          }
+        });
+        nodes[id] = { id, group, platform, coin, baseMat, topMat, lowerMat, haloMaterial, glow, label: makeLabel(id, d.short || d.name, d.name), amount: 0, phase: Object.keys(nodes).length * 1.4, x: d.x, z: d.z };
+      }
+
+      Object.entries(app.distros).forEach(([id, d]) => makeNode(id, d));
+
+      function makePenguin() {
+        const root = new THREE.Group();
+        root.position.set(-.1, 0, 2.85);
+        world.add(root);
+        const platform = new THREE.Group();
+        root.add(platform);
+        addMesh(new THREE.CylinderGeometry(1.07, 1.13, .20, 80), mat('#bdcfa5', .4, .1), platform, [0, -.02, 0]);
+        addMesh(new THREE.CylinderGeometry(1.09, 1.04, .22, 80), mat('#f3f6ea', .4), platform, [0, .13, 0]);
+        addMesh(new THREE.CylinderGeometry(.95, .95, .07, 80), mat('#dce8cd', .6), platform, [0, .27, 0]);
+        const rim = addMesh(new THREE.TorusGeometry(1.06, .018, 8, 100), new THREE.MeshStandardMaterial({ color: '#aad279', emissive: '#8baa60', emissiveIntensity: .12, roughness: .4 }), platform, [0, .23, 0]);
+        rim.rotation.x = Math.PI / 2;
+        const penguin = new THREE.Group();
+        penguin.rotation.y = .5;
+        penguin.position.y = .11;
+        root.add(penguin);
+        const black = mat('#26352e', .29, .06);
+        const cream = mat('#fcf7df', .56);
+        const orange = mat('#d8aa59', .47);
+        const pupilMat = mat('#14221b', .17);
+        const white = mat('#ffffff', .25);
+        function ellipsoid(parent, material, position, scale) {
+          const mesh = addMesh(sharedSphere, material, parent, position);
+          mesh.scale.set(...scale);
+          return mesh;
+        }
+        ellipsoid(penguin, black, [0, 1.00, 0], [.55, .72, .44]);
+        ellipsoid(penguin, cream, [0, .91, .277], [.41, .545, .235]);
+        ellipsoid(penguin, black, [0, 1.66, .022], [.405, .43, .37]);
+        for (const sign of [-1, 1]) {
+          ellipsoid(penguin, cream, [sign * .14, 1.69, .337], [.138, .18, .073]);
+          ellipsoid(penguin, pupilMat, [sign * .126, 1.706, .403], [.051, .077, .033]);
+          ellipsoid(penguin, white, [sign * .115, 1.733, .430], [.015, .022, .013]);
+          const wing = ellipsoid(penguin, black, [sign * .51, .98, -.005], [.16, .49, .17]);
+          wing.rotation.z = sign * .38;
+          wing.rotation.x = -.1;
+          const foot = ellipsoid(penguin, orange, [sign * .29, .265, .27], [.24, .115, .36]);
+          foot.rotation.y = sign * .2;
+        }
+        ellipsoid(penguin, orange, [0, 1.52, .427], [.19, .082, .19]);
+        ellipsoid(penguin, orange, [0, 1.47, .413], [.14, .045, .13]);
+        root.traverse((object) => { if (object.isMesh) { object.userData.nodeId = 'linux'; pickTargets.push(object); } });
+        nodes.linux = { id: 'linux', group: root, coin: penguin, label: makeLabel('linux', 'Linux'), x: -.1, z: 2.85, phase: 0 };
+      }
+      makePenguin();
+
+      const edges = [];
+      Object.entries(app.distros).forEach(([id, d], index) => {
+        const parent = nodes[d.parent];
+        const child = nodes[id];
+        const a = new THREE.Vector3(parent.x, -.092, parent.z);
+        const b = new THREE.Vector3(child.x, -.092, child.z);
+        let controlA, controlB;
+        if (Math.abs(a.z - b.z) > Math.abs(a.x - b.x) * .65) {
+          const middle = (a.z + b.z) / 2;
+          controlA = new THREE.Vector3(a.x, -.092, middle);
+          controlB = new THREE.Vector3(b.x, -.092, middle);
+        } else {
+          const middle = (a.x + b.x) / 2;
+          controlA = new THREE.Vector3(middle, -.092, a.z);
+          controlB = new THREE.Vector3(middle, -.092, b.z);
+        }
+        const curve = new THREE.CubicBezierCurve3(a, controlA, controlB, b);
+        const trackMat = new THREE.MeshStandardMaterial({ color: '#bdcdae', roughness: .65, metalness: .05 });
+        const path = new THREE.Mesh(new THREE.TubeGeometry(curve, 80, .033, 9, false), trackMat);
+        path.receiveShadow = true;
+        world.add(path);
+        const channel = new THREE.Mesh(new THREE.TubeGeometry(curve, 80, .071, 9, false), mat('#dce6ce', .8));
+        channel.position.y = -.025;
+        channel.receiveShadow = true;
+        world.add(channel);
+        const particleMat = new THREE.MeshBasicMaterial({ color: '#87af55', transparent: true, opacity: 0 });
+        const particles = [];
+        for (let i = 0; i < 3; i++) {
+          const particle = new THREE.Mesh(new THREE.SphereGeometry(.057, 10, 8), particleMat);
+          world.add(particle);
+          particles.push(particle);
+        }
+        edges.push({ id, curve, trackMat, particleMat, particles, amount: 0, phase: index * .137 });
+      });
+
+      let activePath = new Set();
+      function updateSelection(id) {
+        activePath = new Set();
+        let cursor = id;
+        while (cursor && cursor !== 'linux') {
+          activePath.add(cursor);
+          cursor = app.distros[cursor].parent;
+        }
+      }
+      updateSelection(app.selected);
+      app.subscribe(updateSelection);
+
+      const narrowLayout = window.matchMedia('(max-width: 850px)');
+      let width = 1, height = 1;
+      function resize() {
+        width = Math.max(1, stage.clientWidth);
+        height = Math.max(1, stage.clientHeight);
+        const aspect = width / height;
+        // Split desktop layout: the base board spans ~15.3 units on screen, so frame 16.6 units
+        // to keep the whole board inside the stage at any orbit angle.
+        // Full-bleed mobile stage: frame every node, letting the board run off the screen edges.
+        const bleed = narrowLayout.matches && !document.fullscreenElement;
+        const fitWidth = bleed ? 11.8 : 16.6;
+        const fitHeight = bleed ? 10.2 : 11.6;
+        const viewHeight = Math.max(fitHeight, fitWidth / aspect);
+        camera.left = -viewHeight * aspect / 2;
+        camera.right = viewHeight * aspect / 2;
+        camera.top = viewHeight / 2;
+        camera.bottom = -viewHeight / 2;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height, false);
+      }
+      const observer = new ResizeObserver(resize);
+      observer.observe(stage);
+      resize();
+
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      const activePointers = new Set();
+      let isMultitouch = false;
+      let pointerStart = null;
+      let pointerTravel = 0;
+      let resetAnimating = false;
+      let zoomTarget = null;
+      function pick(event) {
+        const bounds = canvas.getBoundingClientRect();
+        pointer.set(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
+        raycaster.setFromCamera(pointer, camera);
+        return raycaster.intersectObjects(pickTargets, false)[0]?.object.userData.nodeId || null;
+      }
+      canvas.addEventListener('pointerdown', (event) => {
+        activePointers.add(event.pointerId);
+        if (activePointers.size === 1) {
+          pointerStart = [event.clientX, event.clientY];
+          pointerTravel = 0;
+          isMultitouch = false;
+        } else isMultitouch = true;
+        resetAnimating = false;
+        zoomTarget = null;
+      });
+      canvas.addEventListener('pointermove', (event) => {
+        if (pointerStart) pointerTravel = Math.max(pointerTravel, Math.hypot(event.clientX - pointerStart[0], event.clientY - pointerStart[1]));
+        if (isMultitouch || (pointerStart && pointerTravel > 5)) { canvas.style.cursor = 'grabbing'; hoverId = null; return; }
+        hoverId = pick(event);
+        canvas.style.cursor = hoverId ? 'pointer' : 'grab';
+      });
+      canvas.addEventListener('pointerup', (event) => {
+        if (!isMultitouch && pointerStart && pointerTravel < 6 && event.button === 0) {
+          const id = pick(event);
+          if (id) id === 'linux' ? app.details('linux') : app.select(id);
+        }
+        activePointers.delete(event.pointerId);
+        if (activePointers.size === 0) { pointerStart = null; isMultitouch = false; }
+        canvas.style.cursor = hoverId ? 'pointer' : 'grab';
+      });
+      canvas.addEventListener('pointercancel', (event) => {
+        activePointers.delete(event.pointerId);
+        pointerStart = null;
+        hoverId = null;
+        if (activePointers.size === 0) isMultitouch = false;
+      });
+      canvas.addEventListener('pointerleave', () => { hoverId = null; });
+      canvas.addEventListener('wheel', () => { zoomTarget = null; resetAnimating = false; }, { passive: true });
+
+      function resetView() {
+        controls.autoRotate = false;
+        document.getElementById('auto-rotate').setAttribute('aria-pressed', 'false');
+        zoomTarget = null;
+        if (reducedMotion.matches) { controls.reset(); }
+        else resetAnimating = true;
+      }
+      function zoom(amount) {
+        resetAnimating = false;
+        zoomTarget = THREE.MathUtils.clamp((zoomTarget ?? camera.zoom) + amount, controls.minZoom, controls.maxZoom);
+      }
+      document.getElementById('zoom-in').addEventListener('click', () => zoom(.17));
+      document.getElementById('zoom-out').addEventListener('click', () => zoom(-.17));
+      document.getElementById('reset-view').addEventListener('click', resetView);
+      document.getElementById('auto-rotate').addEventListener('click', (event) => {
+        resetAnimating = false;
+        controls.autoRotate = !controls.autoRotate;
+        event.currentTarget.setAttribute('aria-pressed', String(controls.autoRotate));
+      });
+      canvas.addEventListener('keydown', (event) => {
+        if (event.key === '+' || event.key === '=') { event.preventDefault(); zoom(.17); }
+        if (event.key === '-') { event.preventDefault(); zoom(-.17); }
+        if (event.key.toLowerCase() === 'r') { event.preventDefault(); resetView(); }
+      });
+      app.scene = { reset: resetView };
+
+      const activeTop = new THREE.Color('#e1edce');
+      const neutralTop = new THREE.Color('#eef2e5');
+      const activeBase = new THREE.Color('#f5f8eb');
+      const neutralBase = new THREE.Color('#f0f3e8');
+      const activeTrack = new THREE.Color('#8bac61');
+      const neutralTrack = new THREE.Color('#bdcdae');
+      const projected = new THREE.Vector3();
+      let elapsed = 0;
+      let lastTime = performance.now();
+      let visible = true;
+      let contextLost = false;
+      const cameraUp = new THREE.Vector3();
+      const labelDirection = new THREE.Vector3();
+      const labelAnchor = new THREE.Vector3();
+      const instructions = document.getElementById('scene-instructions');
+      if (window.matchMedia('(pointer: coarse)').matches) {
+        instructions.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-hand"/></svg><span>Swipe sideways to orbit</span><span class="instruction-divider"></span><span>Pinch to zoom</span><span class="instruction-divider"></span><span>Tap to explore</span>';
+      }
+      const instructionsMarkup = instructions.innerHTML;
+      document.addEventListener('visibilitychange', () => { visible = !document.hidden; lastTime = performance.now(); });
+      canvas.addEventListener('webglcontextlost', (event) => {
+        event.preventDefault();
+        contextLost = true;
+        stage.classList.remove('is-ready');
+        document.getElementById('map-fallback').inert = false;
+        document.getElementById('map-fallback').setAttribute('aria-hidden', 'false');
+        canvas.setAttribute('aria-hidden', 'true');
+        canvas.tabIndex = -1;
+        document.getElementById('node-labels').hidden = true;
+        document.querySelectorAll('.view-tools button:not(#fullscreen)').forEach((button) => { button.disabled = true; });
+        status.textContent = 'INTERACTIVE 2D MAP';
+        document.getElementById('scene-instructions').textContent = 'Select a distro to explore its branch';
+      });
+      canvas.addEventListener('webglcontextrestored', () => {
+        contextLost = false;
+        stage.classList.add('is-ready');
+        document.getElementById('map-fallback').inert = true;
+        document.getElementById('map-fallback').setAttribute('aria-hidden', 'true');
+        canvas.removeAttribute('aria-hidden');
+        canvas.tabIndex = 0;
+        document.getElementById('node-labels').hidden = false;
+        document.querySelectorAll('.view-tools button').forEach((button) => { button.disabled = false; });
+        status.textContent = 'EXPLORE THE FAMILY TREE';
+        instructions.innerHTML = instructionsMarkup;
+      });
+
+      function animate(now) {
+        requestAnimationFrame(animate);
+        if (!visible || contextLost) return;
+        const delta = THREE.MathUtils.clamp((now - lastTime) / 1000, 0, .05);
+        lastTime = now;
+        if (!reducedMotion.matches) elapsed += delta;
+        const smoothing = reducedMotion.matches ? 1 : 1 - Math.exp(-delta * 7);
+
+        if (resetAnimating) {
+          camera.position.lerp(initialPosition, smoothing * .7);
+          controls.target.lerp(initialTarget, smoothing * .7);
+          camera.zoom = THREE.MathUtils.lerp(camera.zoom, 1, smoothing);
+          camera.updateProjectionMatrix();
+          if (camera.position.distanceTo(initialPosition) < .012 && Math.abs(camera.zoom - 1) < .001) {
+            camera.position.copy(initialPosition);
+            controls.target.copy(initialTarget);
+            camera.zoom = 1;
+            camera.updateProjectionMatrix();
+            resetAnimating = false;
+          }
+        }
+        if (zoomTarget !== null) {
+          camera.zoom = THREE.MathUtils.lerp(camera.zoom, zoomTarget, smoothing);
+          camera.updateProjectionMatrix();
+          if (Math.abs(camera.zoom - zoomTarget) < .001) zoomTarget = null;
+        }
+        controls.update(delta);
+        camera.updateMatrixWorld();
+        // Keep every logo coin (and Tux) turned toward the viewer while the tree orbits.
+        const azimuth = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
+        world.position.y = Math.sin(elapsed * .55) * .025;
+        Object.values(nodes).forEach((node) => {
+          node.coin.rotation.y = azimuth;
+          if (node.id !== 'linux') {
+            const isSelected = node.id === app.selected;
+            node.amount = THREE.MathUtils.lerp(node.amount, isSelected ? 1 : 0, smoothing);
+            const float = Math.sin(elapsed * 1.05 + node.phase) * .045;
+            node.coin.position.y = 1.10 + float + node.amount * .22 + (hoverId === node.id ? .07 : 0);
+            node.coin.rotation.z = Math.sin(elapsed * .6 + node.phase) * .026;
+            node.coin.scale.setScalar(1 + node.amount * .16);
+            node.platform.position.y = node.amount * .045;
+            node.topMat.color.copy(neutralTop).lerp(activeTop, node.amount);
+            node.baseMat.color.copy(neutralBase).lerp(activeBase, node.amount);
+            node.haloMaterial.opacity = node.amount * (.53 + Math.sin(elapsed * 1.9) * .12);
+            node.glow.material.opacity = node.amount * .58;
+          } else {
+            node.coin.position.y = .11 + Math.sin(elapsed * .9) * .022;
+            node.coin.rotation.z = Math.sin(elapsed * .55) * .018;
+          }
+        });
+        edges.forEach((edge) => {
+          edge.amount = THREE.MathUtils.lerp(edge.amount, activePath.has(edge.id) ? 1 : 0, smoothing);
+          edge.trackMat.color.copy(neutralTrack).lerp(activeTrack, edge.amount);
+          edge.particleMat.opacity = edge.amount * .95;
+          edge.particles.forEach((particle, index) => {
+            const t = (elapsed * .11 + index / 3 + edge.phase) % 1;
+            particle.position.copy(edge.curve.getPoint(t));
+            particle.position.y += .033;
+          });
+        });
+
+        world.updateMatrixWorld(true);
+        // The ground direction that points "down" on screen is the camera's up vector, flattened and reversed.
+        cameraUp.setFromMatrixColumn(camera.matrixWorld, 1);
+        labelDirection.set(-cameraUp.x, 0, -cameraUp.z);
+        if (labelDirection.lengthSq() < 1e-6) labelDirection.set(0, 0, 1);
+        else labelDirection.normalize();
+        Object.values(nodes).forEach((node) => {
+          // Reach just past the platform rim (and the halo ring when a node is selected).
+          const reach = node.id === 'linux' ? 1.16 : .95 + node.amount * .25;
+          labelAnchor.set(node.x + labelDirection.x * reach, -.12, node.z + labelDirection.z * reach);
+          projected.copy(labelAnchor).applyMatrix4(world.matrixWorld).project(camera);
+          const x = (projected.x * .5 + .5) * width;
+          const y = (-projected.y * .5 + .5) * height + 3;
+          const offscreen = x < 12 || x > width - 12 || y < 8 || y > height - 28;
+          node.label.style.visibility = offscreen ? 'hidden' : 'visible';
+          node.label.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translateX(-50%)`;
+        });
+        renderer.render(scene, camera);
+      }
+
+      renderer.render(scene, camera);
+      stage.classList.add('is-ready');
+      document.getElementById('map-fallback').inert = true;
+      document.getElementById('map-fallback').setAttribute('aria-hidden', 'true');
+      status.textContent = 'EXPLORE THE FAMILY TREE';
+      canvas.style.cursor = 'grab';
+      document.querySelectorAll('.view-tools button').forEach((button) => { button.disabled = false; });
+      requestAnimationFrame(animate);
+    } catch (error) {
+      console.warn('The 3D renderer is unavailable; using the interactive generated 2D map.', error);
+      stage.classList.remove('is-ready');
+      document.getElementById('map-fallback').inert = false;
+      document.getElementById('map-fallback').setAttribute('aria-hidden', 'false');
+      canvas.hidden = true;
+      document.getElementById('node-labels').hidden = true;
+      status.textContent = 'INTERACTIVE 2D MAP';
+      document.getElementById('scene-instructions').textContent = 'Select a distro to explore its branch';
+      document.querySelectorAll('.view-tools button:not(#fullscreen)').forEach((button) => { button.disabled = true; });
+    }
+  </script>
+</body>
+</html>
