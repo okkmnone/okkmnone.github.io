@@ -6,6 +6,7 @@ const DATA = [
   "005--sep-30-2026--binary-distribution-trade-off-analysis--claude-opus-4-7.html",
   "006--sep-30-2026--comparing-software-build-sizes--qwen3.8-max-0902.html",
   "007--nov-04-2026--the-editor-report--pulse-alpha--max.html",
+  "008--nov-12-2026--rust-1.100.0--grok-4.7--xhigh.html",
 ];
 
 const EPIGRAPHS = [
